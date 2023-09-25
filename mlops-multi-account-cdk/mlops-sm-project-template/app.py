@@ -16,43 +16,67 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+
+# !/usr/bin/env python3
+
+import logging
+from logging import Logger
+
 import aws_cdk as cdk
-import os
-import json
-from mlops_sm_project_template.pipeline_stack import PipelineStack, CoreStage
-from mlops_sm_project_template.codecommit_stack import CodeCommitStack
-from mlops_sm_project_template.config.constants import DEFAULT_DEPLOYMENT_REGION, PIPELINE_ACCOUNT
+
+from cdk_pipelines.cdk_pipeline_codecommit_repo import CdkPipelineCodeCommitStack
+from cdk_pipelines.cdk_pipelines import CdkPipelineStack
+from cdk_utilities.cdk_app_config import CdkAppConfig, DeploymentStage
+from cdk_utilities.config_helper import ConfigHelper
 
 
-def load_account_set_config(filename):
-    """
-    Loads config from file
-    """
+class MLOpsCdkApp:
+    logging.basicConfig(level=logging.INFO)
 
-    with open(filename, "r", encoding="utf-8") as f:
-        config = json.load(f)
+    def __init__(self):
+        self.logger: Logger = logging.getLogger(self.__class__.__name__)
 
-    return config
+    def main(self):
+
+        self.logger.info('Starting cdk app...')
+
+        app = cdk.App()
+        cac: CdkAppConfig = ConfigHelper.get_config()
+
+        CdkPipelineCodeCommitStack.get_repo(app, cac.pipeline)
+
+        for dc in cac.deployments:
+
+            dev_conf: DeploymentStage = dc.get_deployment_stage_by_name('Dev')
+
+            self.logger.info(f'Start deploying config '
+                             f'set name : {dc.set_name}, '
+                             f'dev_account: {dev_conf.account}, '
+                             f'deployment_region : {dev_conf.region}')
+
+            if not dc.enabled or not dev_conf.enabled:
+                self.logger.info(f'Skipping deployment of config ->'
+                                 f'set name : {dc.set_name}, '
+                                 f'dev_account: {dev_conf.account}, '
+                                 f'deployment_region : {dev_conf.region} '
+                                 f'enabled : {str(dev_conf.enabled)}'
+                                 f' as it is disabled in configuration file. To enable it, set the attribute '
+                                 f'enabled=True at deployments level in yaml configuration file ')
+                continue
+
+            CdkPipelineStack(
+                app,
+                f"ml-sc-deploy-pipeline-{dc.set_name}",
+                app_prefix=cac.app_prefix,
+                set_name=dc.set_name,
+                deploy_conf=dev_conf,
+                pipeline_conf=cac.pipeline,
+                description="CI/CD CDK Pipelines for Sagemaker Projects Service Catalog",
+                env=cdk.Environment(account=str(cac.pipeline.account), region=cac.pipeline.region)
+            )
+
+        app.synth()
 
 
-app = cdk.App()
-
-config_sets = load_account_set_config("mlops_sm_project_template/config/accounts.json")
-
-pipeline_env = cdk.Environment(account=PIPELINE_ACCOUNT, region=DEFAULT_DEPLOYMENT_REGION)
-
-CodeCommitStack(app, "ml-sc-cc-repo", env=pipeline_env)
-
-for config_set in config_sets:
-    PipelineStack(app, f"ml-sc-deploy-pipeline-{config_set['SET_NAME']}", env=pipeline_env, config_set=config_set)
-
-# Personal Stacks for testing locally, comment out when committing to repository
-# if not os.getenv("CODEBUILD_BUILD_ARN"):
-#     CoreStage(
-#         app,
-#         "Personal",  ## change this to another stack name when doing local tests
-#         env=deployment_env,
-#     )
-
-
-app.synth()
+if __name__ == "__main__":
+    MLOpsCdkApp().main()

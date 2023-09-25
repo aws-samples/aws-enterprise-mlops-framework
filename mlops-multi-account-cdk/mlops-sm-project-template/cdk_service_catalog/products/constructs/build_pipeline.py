@@ -24,71 +24,36 @@ from aws_cdk import (
     aws_codepipeline as codepipeline,
     aws_codepipeline_actions as codepipeline_actions,
 )
-import aws_cdk
+from typing import Optional
 from constructs import Construct
 
 
 class BuildPipelineConstruct(Construct):
     def __init__(
-        self,
-        scope: Construct,
-        construct_id: str,
-        project_name: str,
-        project_id: str,
-        s3_artifact: s3.IBucket,
-        pipeline_artifact_bucket: s3.IBucket,
-        model_package_group_name: str,
-        repo_s3_bucket_name: str,
-        repo_s3_object_key: str,
-        **kwargs,
+            self,
+            scope: Construct,
+            construct_id: str,
+            project_name: str,
+            project_id: str,
+            s3_artifact: s3.IBucket,
+            pipeline_artifact_bucket: s3.IBucket,
+            model_package_group_name: str,
+            repository: codecommit.Repository,
+            ecr_repository_name: Optional[str] = None,
+            **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         # Define resource names
         pipeline_name = f"{project_name}-{construct_id}"
         pipeline_description = f"{project_name} Model Build Pipeline"
-
-        # Create source repo from seed bucket/key
-        build_app_cfnrepository = codecommit.CfnRepository(
-            self,
-            "BuildAppCodeRepo",
-            repository_name=f"{project_name}-{construct_id}",
-            code=codecommit.CfnRepository.CodeProperty(
-                s3=codecommit.CfnRepository.S3Property(
-                    bucket=repo_s3_bucket_name,
-                    key=repo_s3_object_key,
-                    object_version=None,
-                ),
-                branch_name="main",
-            ),
-            tags=[
-                aws_cdk.CfnTag(key="sagemaker:project-id", value=project_id),
-                aws_cdk.CfnTag(key="sagemaker:project-name", value=project_name),
-            ],
-        )
-
-        # Reference the newly created repository
-        build_app_repository = codecommit.Repository.from_repository_name(
-            self, "ImportedBuildRepo", build_app_cfnrepository.attr_name
-        )
+        build_image = codebuild.LinuxBuildImage.STANDARD_7_0
 
         codebuild_role = iam.Role(
             self,
             "CodeBuildRole",
             assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
             path="/service-role/",
-        )
-        
-        codebuild_role.add_to_policy(
-            iam.PolicyStatement(
-                actions=[
-                    "ssm:*",
-                ],
-                effect=iam.Effect.ALLOW,
-                resources=[
-                    f"arn:aws:ssm:*:{Aws.ACCOUNT_ID}:parameter/mlops/{project_name}*",
-                ],
-            ),
         )
 
         sagemaker_execution_role = iam.Role(
@@ -147,7 +112,11 @@ class BuildPipelineConstruct(Construct):
                             "s3:PutObject*",
                             "s3:Create*",
                         ],
-                        resources=[s3_artifact.bucket_arn, f"{s3_artifact.bucket_arn}/*", "arn:aws:s3:::sagemaker-*"],
+                        resources=[
+                            s3_artifact.bucket_arn,
+                            f"{s3_artifact.bucket_arn}/*",
+                            "arn:aws:s3:::sagemaker-*",
+                        ],
                     ),
                     iam.PolicyStatement(
                         actions=["iam:PassRole"],
@@ -164,6 +133,15 @@ class BuildPipelineConstruct(Construct):
                         effect=iam.Effect.ALLOW,
                         resources=[f"arn:aws:kms:{Aws.REGION}:{Aws.ACCOUNT_ID}:key/*"],
                     ),
+                    iam.PolicyStatement(
+                        actions=[
+                            "ssm:PutParameter",
+                            "ssm:GetParameters",
+                            "ssm:GetParameter",
+                            "ssm:GetParametersByPath",
+                        ],
+                        resources=[f"arn:aws:ssm:{Aws.REGION}:{Aws.ACCOUNT_ID}:parameter/*"],
+                    ),
                 ]
             ),
         )
@@ -171,40 +149,73 @@ class BuildPipelineConstruct(Construct):
         sagemaker_policy.attach_to_role(sagemaker_execution_role)
         sagemaker_policy.attach_to_role(codebuild_role)
 
+        environment_variables = dict()
+
+        environment_variables.update({
+            "SAGEMAKER_PROJECT_NAME": codebuild.BuildEnvironmentVariable(
+                value=project_name
+            )
+        })
+        environment_variables.update({
+            "SAGEMAKER_PROJECT_ID": codebuild.BuildEnvironmentVariable(
+                value=project_id
+            )
+        })
+        environment_variables.update({
+            "MODEL_PACKAGE_GROUP_NAME": codebuild.BuildEnvironmentVariable(
+                value=model_package_group_name
+            )
+        })
+        environment_variables.update({
+            "AWS_REGION": codebuild.BuildEnvironmentVariable(value=Aws.REGION)
+        })
+        environment_variables.update({
+            "SAGEMAKER_PIPELINE_NAME": codebuild.BuildEnvironmentVariable(
+                value=pipeline_name,
+            )
+        })
+        environment_variables.update({
+            "SAGEMAKER_PIPELINE_DESCRIPTION": codebuild.BuildEnvironmentVariable(
+                value=pipeline_description,
+            )
+        })
+        environment_variables.update({
+            "SAGEMAKER_PIPELINE_ROLE_ARN": codebuild.BuildEnvironmentVariable(
+                value=sagemaker_execution_role.role_arn,
+            )
+        })
+        environment_variables.update({
+            "ARTIFACT_BUCKET": codebuild.BuildEnvironmentVariable(value=s3_artifact.bucket_name)
+        })
+        environment_variables.update({
+            "ARTIFACT_BUCKET_KMS_ID": codebuild.BuildEnvironmentVariable(
+                value=s3_artifact.encryption_key.key_id
+            )
+        })
+
+        if ecr_repository_name:
+            environment_variables.update({
+                "ECR_REPO_URI": codebuild.BuildEnvironmentVariable(
+                    value=f"{Aws.ACCOUNT_ID}.dkr.ecr.{Aws.REGION}.amazonaws.com/{ecr_repository_name}"
+                )
+            })
+
         sm_pipeline_build = codebuild.PipelineProject(
             self,
             "SMPipelineBuild",
             project_name=f"{project_name}-{construct_id}",
-            role=codebuild_role,
+            role=codebuild_role,  # figure out what actually this role would need
             build_spec=codebuild.BuildSpec.from_source_filename("buildspec.yml"),
-            environment=codebuild.BuildEnvironment(
-                build_image=codebuild.LinuxBuildImage.STANDARD_5_0,
-                environment_variables={
-                    "SAGEMAKER_PROJECT_NAME": codebuild.BuildEnvironmentVariable(value=project_name),
-                    "SAGEMAKER_PROJECT_ID": codebuild.BuildEnvironmentVariable(value=project_id),
-                    "MODEL_PACKAGE_GROUP_NAME": codebuild.BuildEnvironmentVariable(value=model_package_group_name),
-                    "AWS_REGION": codebuild.BuildEnvironmentVariable(value=Aws.REGION),
-                    "SAGEMAKER_PIPELINE_NAME": codebuild.BuildEnvironmentVariable(
-                        value=pipeline_name,
-                    ),
-                    "SAGEMAKER_PIPELINE_DESCRIPTION": codebuild.BuildEnvironmentVariable(
-                        value=pipeline_description,
-                    ),
-                    "SAGEMAKER_PIPELINE_ROLE_ARN": codebuild.BuildEnvironmentVariable(
-                        value=sagemaker_execution_role.role_arn,
-                    ),
-                    "ARTIFACT_BUCKET": codebuild.BuildEnvironmentVariable(value=s3_artifact.bucket_name),
-                    "ARTIFACT_BUCKET_KMS_ID": codebuild.BuildEnvironmentVariable(
-                        value=s3_artifact.encryption_key.key_id
-                    ),
-                },
-            ),
+            environment=codebuild.BuildEnvironment(build_image=build_image, environment_variables=environment_variables)
         )
 
         source_artifact = codepipeline.Artifact(artifact_name="GitSource")
 
         build_pipeline = codepipeline.Pipeline(
-            self, "Pipeline", pipeline_name=pipeline_name, artifact_bucket=pipeline_artifact_bucket
+            self,
+            "Pipeline",
+            pipeline_name=pipeline_name,
+            artifact_bucket=pipeline_artifact_bucket,
         )
 
         # add a source stage
@@ -213,17 +224,66 @@ class BuildPipelineConstruct(Construct):
             codepipeline_actions.CodeCommitSourceAction(
                 action_name="Source",
                 output=source_artifact,
-                repository=build_app_repository,
+                repository=repository,
                 branch="main",
             )
         )
 
+        run_order = 1
         # add a build stage
         build_stage = build_pipeline.add_stage(stage_name="Build")
+
+        if ecr_repository_name:
+            # code build to include security scan over cloudformation template
+            docker_build = codebuild.Project(
+                self,
+                "DockerBuild",
+                build_spec=codebuild.BuildSpec.from_object(
+                    {
+                        "version": 0.2,
+                        "phases": {
+                            "build": {
+                                "commands": [
+                                    "cd source_scripts",
+                                    "chmod +x docker-build.sh",
+                                    f"./docker-build.sh {ecr_repository_name}",
+                                ]
+                            },
+                        },
+                    }
+                ),
+                environment=codebuild.BuildEnvironment(build_image=build_image, privileged=True)
+            )
+
+            docker_build.add_to_role_policy(
+                iam.PolicyStatement(
+                    actions=["ecr:*"],
+                    effect=iam.Effect.ALLOW,
+                    resources=[f"arn:aws:ecr:{Aws.REGION}:{Aws.ACCOUNT_ID}:repository/{ecr_repository_name}"],
+                )
+            )
+
+            docker_build.add_to_role_policy(
+                iam.PolicyStatement(
+                    actions=["ecr:Get*"],
+                    effect=iam.Effect.ALLOW,
+                    resources=["*"],
+                )
+            )
+
+            build_stage.add_action(
+                codepipeline_actions.CodeBuildAction(
+                    action_name="DockerBuild", input=source_artifact, project=docker_build, run_order=run_order
+                )
+            )
+
+            run_order = run_order + 1
+
         build_stage.add_action(
             codepipeline_actions.CodeBuildAction(
                 action_name="SMPipeline",
                 input=source_artifact,
                 project=sm_pipeline_build,
+                run_order=run_order,
             )
         )

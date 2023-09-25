@@ -15,41 +15,81 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import os
+
+import aws_cdk
 from aws_cdk import (
     Aws,
-    CfnDynamicReference,
-    CfnDynamicReferenceService,
-    Stack,
     Tags,
     aws_s3 as s3,
     aws_iam as iam,
     aws_kms as kms,
-    aws_ecr as ecr,
     aws_sagemaker as sagemaker,
+    aws_servicecatalog as sc,
+    aws_codecommit as codecommit,
 )
-
-import aws_cdk
 
 from constructs import Construct
 
-from mlops_sm_project_template.templates.ssm_construct import SSMConstruct
+from cdk_service_catalog.products.constructs.build_pipeline import BuildPipelineConstruct
+from cdk_service_catalog.products.constructs.deploy_pipeline import DeployPipelineConstruct
+from cdk_service_catalog.products.constructs.ssm import SSMConstruct
 
-from mlops_sm_project_template.templates.byoc_pipeline_constructs.build_pipeline_construct import (
-    BuildPipelineConstruct,
-)
-from mlops_sm_project_template.templates.byoc_pipeline_constructs.deploy_pipeline_construct import (
-    DeployPipelineConstruct,
-)
+from cdk_utilities.zip_utils import ZipUtility
+
+BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
-class MLOpsStack(Stack):
-    DESCRIPTION: str = "This template includes a model building pipeline that includes a workflow to build your own containers, pre-process, train, evaluate and register a model. The deploy pipeline creates a dev, preprod and production endpoint. The target DEV/PREPROD/PROD accounts are predefined in this template."
-    TEMPLATE_NAME: str = "MLOps template for real-time deployment using your own container"
+class MLOpsStack(sc.ProductStack):
+    DESCRIPTION: str = ("This template includes a build and a deploy code repository (CodeCommit) associated "
+                        "to their respective CICD pipeline (CodePipeline). The build repository and CICD pipeline "
+                        "are used to run SageMaker pipeline(s) in dev and promote the pipeline definition to an "
+                        "artefact bucket. The deploy repository and CICD pipeline loads the artefact SageMaker "
+                        "pipeline definition to create a Sagemaker pipeline in preprod and production as "
+                        "infrastructure as code (eg for batch inference). The target PREPROD/PROD accounts are "
+                        "provided as cloudformation parameters and must be provided during project creation. "
+                        "The PREPROD/PROD accounts need to be cdk bootstraped in advance to have the right "
+                        "CloudFormation execution cross account roles.")
 
-    def __init__(self, scope: Construct, construct_id: str, preprod_account: int, prod_account: int, deployment_region: str, **kwargs) -> None:
-        super().__init__(scope, construct_id, **kwargs)
+    TEMPLATE_NAME: str = "MLOps Batch Inference template to build and deploy SageMaker pipeline"
 
-        # Define required parmeters
+    SUPPORT_EMAIL: str = 'batch_inference_project@example.com'
+
+    SUPPORT_URL: str = 'https://example.com/support/batch_inference_project'
+
+    SUPPORT_DESCRIPTION: str = ('Example of support details for batch inference project'
+                                )
+
+    @classmethod
+    def get_description(cls) -> str:
+        return cls.DESCRIPTION
+
+    @classmethod
+    def get_support_email(cls) -> str:
+        return cls.SUPPORT_EMAIL
+
+    @classmethod
+    def get_product_name(cls) -> str:
+        return cls.TEMPLATE_NAME
+
+    @classmethod
+    def get_support_url(cls) -> str:
+        return cls.SUPPORT_URL
+
+    @classmethod
+    def get_support_description(cls) -> str:
+        return cls.SUPPORT_DESCRIPTION
+
+    def __init__(
+            self,
+            scope: Construct,
+            construct_id: str,
+            asset_bucket: s3.Bucket = None,
+            **kwargs
+    ) -> None:
+        super().__init__(scope, construct_id, asset_bucket=asset_bucket, **kwargs)
+
+        # Define required parameters
         project_name = aws_cdk.CfnParameter(
             self,
             "SageMakerProjectName",
@@ -68,6 +108,33 @@ class MLOpsStack(Stack):
             description="Service generated Id of the project.",
         ).value_as_string
 
+        preprod_account = aws_cdk.CfnParameter(
+            self,
+            "PreProdAccount",
+            type="String",
+            min_length=11,
+            max_length=13,
+            description="Id of preprod account.",
+        ).value_as_string
+
+        prod_account = aws_cdk.CfnParameter(
+            self,
+            "ProdAccount",
+            type="String",
+            min_length=11,
+            max_length=13,
+            description="Id of prod account.",
+        ).value_as_string
+
+        deployment_region = aws_cdk.CfnParameter(
+            self,
+            "DeploymentRegion",
+            type="String",
+            min_length=8,
+            max_length=10,
+            description="Deployment region for preprod and prod account.",
+        ).value_as_string
+
         Tags.of(self).add("sagemaker:project-id", project_id)
         Tags.of(self).add("sagemaker:project-name", project_name)
 
@@ -77,7 +144,32 @@ class MLOpsStack(Stack):
             project_name=project_name,
             preprod_account=preprod_account,
             prod_account=prod_account,
-            deployment_region=deployment_region,
+            deployment_region=deployment_region,  # Modify when x-region is enabled
+        )
+
+        build_app_repository = codecommit.Repository(
+            self,
+            "BuildRepo",
+            repository_name=f"{project_name}-{construct_id}-build",
+            code=codecommit.Code.from_zip_file(
+                ZipUtility.create_zip(f"{BASE_DIR}/seed_code/build_app"),
+                branch="main",
+            ),
+        )
+
+        deploy_app_repository = codecommit.Repository(
+            self,
+            "DeployRepo",
+            repository_name=f"{project_name}-{construct_id}-deploy",
+            code=codecommit.Code.from_zip_file(
+                ZipUtility.create_zip(f"{BASE_DIR}/seed_code/deploy_app"),
+                branch="main",
+            ),
+        )
+
+        Tags.of(deploy_app_repository).add(key="sagemaker:project-id", value=project_id)
+        Tags.of(deploy_app_repository).add(
+            key="sagemaker:project-name", value=project_name
         )
 
         # create kms key to be used by the assets bucket
@@ -121,9 +213,10 @@ class MLOpsStack(Stack):
         s3_artifact = s3.Bucket(
             self,
             "S3Artifact",
-            bucket_name=f"mlops-{project_name}-{project_id}-{Aws.REGION}",
+            bucket_name=f"mlops-{project_name}-{Aws.ACCOUNT_ID}",  # Bucket name has a limit of 63 characters
             encryption_key=kms_key,
             versioned=True,
+            auto_delete_objects=True,
             removal_policy=aws_cdk.RemovalPolicy.DESTROY,
         )
 
@@ -222,51 +315,6 @@ class MLOpsStack(Stack):
             ],
         )
 
-        # create ECR repository
-        ml_models_ecr_repo = ecr.Repository(
-            self,
-            "MLModelsECRRepository",
-            image_scan_on_push=True,
-            image_tag_mutability=ecr.TagMutability.MUTABLE,
-            repository_name=f"{project_name}",
-        )
-
-        # add cross account resource policies
-        ml_models_ecr_repo.add_to_resource_policy(
-            iam.PolicyStatement(
-                actions=[
-                    "ecr:BatchCheckLayerAvailability",
-                    "ecr:BatchGetImage",
-                    "ecr:CompleteLayerUpload",
-                    "ecr:GetDownloadUrlForLayer",
-                    "ecr:InitiateLayerUpload",
-                    "ecr:PutImage",
-                    "ecr:UploadLayerPart",
-                ],
-                principals=[
-                    iam.ArnPrincipal(f"arn:aws:iam::{Aws.ACCOUNT_ID}:root"),
-                ],
-            )
-        )
-
-        ml_models_ecr_repo.add_to_resource_policy(
-            iam.PolicyStatement(
-                actions=[
-                    "ecr:BatchCheckLayerAvailability",
-                    "ecr:BatchGetImage",
-                    "ecr:GetDownloadUrlForLayer",
-                ],
-                principals=[
-                    iam.ArnPrincipal(f"arn:aws:iam::{preprod_account}:root"),
-                    iam.ArnPrincipal(f"arn:aws:iam::{prod_account}:root"),
-                ],
-            )
-        )
-
-        seed_bucket = CfnDynamicReference(CfnDynamicReferenceService.SSM, "/mlops/code/seed_bucket").to_string()
-        build_app_key = CfnDynamicReference(CfnDynamicReferenceService.SSM, "/mlops/code/build/byoc").to_string()
-        deploy_app_key = CfnDynamicReference(CfnDynamicReferenceService.SSM, "/mlops/code/deploy").to_string()
-
         kms_key = kms.Key(
             self,
             "PipelineBucketKMSKey",
@@ -287,38 +335,35 @@ class MLOpsStack(Stack):
         pipeline_artifact_bucket = s3.Bucket(
             self,
             "PipelineBucket",
-            bucket_name=f"pipeline-{project_id}-{Aws.REGION}",
+            bucket_name=f"pipeline-{project_name}-{Aws.ACCOUNT_ID}",  # Bucket name has a limit of 63 characters
             encryption_key=kms_key,
             versioned=True,
+            auto_delete_objects=True,
             removal_policy=aws_cdk.RemovalPolicy.DESTROY,
         )
 
         BuildPipelineConstruct(
             self,
             "build",
-            project_name,
-            project_id,
-            s3_artifact,
-            pipeline_artifact_bucket,
-            model_package_group_name,
-            ml_models_ecr_repo.repository_name,
-            seed_bucket,
-            build_app_key,
+            project_name=project_name,
+            project_id=project_id,
+            pipeline_artifact_bucket=pipeline_artifact_bucket,
+            model_package_group_name=model_package_group_name,
+            repository=build_app_repository,
+            s3_artifact=s3_artifact
         )
 
         DeployPipelineConstruct(
             self,
             "deploy",
-            project_name,
-            project_id,
-            pipeline_artifact_bucket,
-            model_package_group_name,
-            ml_models_ecr_repo.repository_arn,
-            s3_artifact.bucket_arn,
-            seed_bucket,
-            deploy_app_key,
-            preprod_account,
-            prod_account,
-            deployment_region,
+            project_name=project_name,
+            project_id=project_id,
+            pipeline_artifact_bucket=pipeline_artifact_bucket,
+            model_package_group_name=model_package_group_name,
+            repository=deploy_app_repository,
+            s3_artifact=s3_artifact,
+            preprod_account=preprod_account,
+            prod_account=prod_account,
+            deployment_region=deployment_region,
             create_model_event_rule=True,
         )

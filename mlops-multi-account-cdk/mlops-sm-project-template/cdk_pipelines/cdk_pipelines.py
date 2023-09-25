@@ -15,138 +15,189 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import aws_cdk
+import aws_cdk as cdk
 from aws_cdk import (
-    Environment,
+
     Stack,
     Stage,
-    aws_codebuild as codebuild,
+    Tags,
     aws_codecommit as codecommit,
-    pipelines,
+    pipelines as pipelines,
+    aws_s3 as s3,
+    aws_iam as iam,
+    aws_kms as kms,
 )
-
 from constructs import Construct
 
-from mlops_sm_project_template.config.constants import (
-    APP_PREFIX,
-    CODE_COMMIT_REPO_NAME,
-    DEFAULT_DEPLOYMENT_REGION,
-    PIPELINE_BRANCH,
+from cdk_service_catalog.sm_service_catalog import SageMakerServiceCatalog
+from cdk_utilities.cdk_app_config import (
+    DeploymentStage,
+    PipelineConfig
 )
 
-from mlops_sm_project_template.service_catalog_stack import ServiceCatalogStack
 
-
-class CoreStage(Stage):
-    """
-    Core Stage
-    Core Stage which handles the creation of stacks that would be used to deploy key components service catalog product for mlops project template for sagemaker projects
-    - ServiceCatalogStack: handles the creation of service catalog related resources and deploy product for sagemaker projects
-    """
-
-    def __init__(self, scope: Construct, id: str, config_set: dict, **kwargs) -> None:
-
-        super().__init__(scope, id, **kwargs)
-
-        service_catalog_stack = ServiceCatalogStack(self, "MLOpsServiceCatalog", config_set=config_set, **kwargs)
-
-
-class PipelineStack(Stack):
-    """
-    Pipeline Stack
-    Pipeline stack which provisions code pipeline for CICD deployments for the project resources.
-    """
-
+class SageMakerServiceCatalogStage(Stage):
     def __init__(
-        self,
-        scope: Construct,
-        id: str,
-        config_set: dict,
-        # cloud_assembly_artifact: codepipeline.Artifact,
-        **kwargs,
-    ):
-        super().__init__(scope, id, **kwargs)
+            self, scope: Construct, construct_id: str,
+            **kwargs
+    ) -> None:
+        super().__init__(scope, construct_id, **kwargs)
 
-        backend_repository = codecommit.Repository.from_repository_name(
-            self, "ProjectTemplateRepo", repository_name=CODE_COMMIT_REPO_NAME
+        service = SageMakerServiceCatalog(
+            self,
+            "template",
+            **kwargs,
         )
 
-        # create a CodePipeline resource which creates the following:
-        # - source stage linked to the code commit repo listensing to the master branch update events
-        # - build stage which runs cdk synth which generated the cloudformation resources in the pipeline artefact cloud assembly
-        # - self mutation stage which handles pipeline changes based on latest pushed code to the repository
-        # - assets stage which pushes zipped assets such as lambda function code, lambda layers and any other assets to a managed s3 bucket (the bucket that was created as part of cdk toolkit stack)
+
+class CdkPipelineStack(Stack):
+    def __init__(self, scope: Construct, construct_id: str, set_name: str,
+                 app_prefix: str, deploy_conf: DeploymentStage,
+                 pipeline_conf: PipelineConfig, **kwargs) -> None:
+        super().__init__(scope, construct_id, **kwargs)
+
+        dev_account: str = str(deploy_conf.account)
+        dev_region: str = deploy_conf.region
+
+        # repo: codecommit.Repository = CdkPipelineCodeCommitStack.get_repo(scope, pipeline_conf)
+        repo: codecommit.IRepository = codecommit.Repository.from_repository_name(
+            self, "ProjectTemplateRepo", repository_name=pipeline_conf.code_commit.repo_name
+        )
+
+        artifact_bucket = self.create_pipeline_artifact_bucket(
+            dev_account=dev_account,
+            app_prefix=app_prefix,
+            set_name=set_name,
+            pipeline_region=pipeline_conf.region
+        )
+
         pipeline = pipelines.CodePipeline(
             self,
             "Pipeline",
-            self_mutation=True,
-            cross_account_keys=True,
-            pipeline_name=f"{APP_PREFIX}-service-catalog-{PIPELINE_BRANCH}-{config_set['SET_NAME']}",
-            docker_enabled_for_synth=True,
-            docker_enabled_for_self_mutation=True,
-            synth=pipelines.ShellStep(  # build stage in code pipeline
+            pipeline_name=f"{app_prefix}-service-catalog-{pipeline_conf.code_commit.branch_name}-{set_name}",
+            synth=pipelines.ShellStep(
                 "Synth",
-                input=pipelines.CodePipelineSource.code_commit(repository=backend_repository, branch=PIPELINE_BRANCH),
-                commands=[
+                input=pipelines.CodePipelineSource.code_commit(repo, pipeline_conf.code_commit.branch_name),
+                install_commands=[
                     "npm install -g aws-cdk",
                     "pip install -r requirements.txt",
-                    "cdk synth --no-lookups",
                 ],
+                commands=[
+                    f"cdk synth --context dev_account={dev_account} --context dev_region={dev_region}",
+                ],
+            ),
+            cross_account_keys=True,
+            artifact_bucket=artifact_bucket,
+
+        )
+
+        pipeline.add_stage(
+            SageMakerServiceCatalogStage(
+                self,
+                "mlops-sm-project",
+                env={
+                    "account": dev_account,
+                    "region": dev_region,
+                },
+            )
+        )
+
+        # General tags applied to all resources created on this scope (self)
+        Tags.of(self).add("cdk-app", f"{app_prefix}-sm-template")
+
+    def create_pipeline_artifact_bucket(self, dev_account: str,
+                                        app_prefix: str, set_name: str, pipeline_region: str) -> s3.Bucket:
+        # create kms key to be used by the assets bucket
+        kms_key = kms.Key(
+            self,
+            "MLOpsPipelineArtifactsBucketKMSKey",
+            description="key used for encryption of data in Amazon S3",
+            enable_key_rotation=True,
+            policy=iam.PolicyDocument(
+                statements=[
+                    iam.PolicyStatement(
+                        actions=["kms:*"],
+                        effect=iam.Effect.ALLOW,
+                        resources=["*"],
+                        principals=[iam.AccountRootPrincipal()],
+                    )
+                ]
             ),
         )
 
-        pipeline.add_wave(
-            "SecurityEvaluation",
-            post=[
-                pipelines.CodeBuildStep(
-                    "cfn-nag",
-                    commands=[],
-                    input=pipeline.synth,
-                    primary_output_directory="./report",
-                    partial_build_spec=codebuild.BuildSpec.from_object(
-                        {
-                            "version": 0.2,
-                            "env": {
-                                "shell": "bash",
-                                "variables": {
-                                    "TemplateFolder": "./**/*.template.json",
-                                    "FAIL_BUILD": "false",
-                                },
-                            },
-                            "phases": {
-                                "install": {
-                                    "runtime-versions": {"ruby": 3.1},
-                                    "commands": [
-                                        "export date=`date +%Y-%m-%dT%H:%M:%S.%NZ`",
-                                        "echo Installing cfn_nag - `pwd`",
-                                        "gem install cfn-nag",
-                                        "echo cfn_nag installation complete `date`",
-                                    ],
-                                },
-                                "build": {
-                                    "commands": [
-                                        "echo Starting cfn scanning `date` in `pwd`",
-                                        "echo 'RulesToSuppress:\n- id: W58\n  reason: W58 is an warning raised due to Lambda functions require permission to write CloudWatch Logs, although the lambda role contains the policy that support these permissions cgn_nag continues to through this problem (https://github.com/stelligent/cfn_nag/issues/422)' > cfn_nag_ignore.yml",  # this is temporary solution to an issue with W58 rule with cfn_nag
-                                        'mkdir report || echo "dir report exists"',
-                                        "SCAN_RESULT=$(cfn_nag_scan --fail-on-warnings --deny-list-path cfn_nag_ignore.yml --input-path  ${TemplateFolder} -o json > ./report/cfn_nag.out.json && echo OK || echo FAILED)",
-                                        "echo Completed cfn scanning `date`",
-                                        "echo $SCAN_RESULT",
-                                        "echo $FAIL_BUILD",
-                                        """if [[ "$FAIL_BUILD" = "true" && "$SCAN_RESULT" = "FAILED" ]]; then printf "\n\nFailiing pipeline as possible insecure configurations were detected\n\n" && exit 1; fi""",
-                                    ]
-                                },
-                            },
-                        }
-                    ),
-                )
-            ],
-        )
-
-        # add dev stage for resources that we want to deploy in this account and potentially in other accounts as well
-        dev_stage = pipeline.add_stage(
-            CoreStage(
-                self,
-                "DEV",
-                config_set=config_set,
-                env=Environment(account=config_set["DEV_ACCOUNT"], region=DEFAULT_DEPLOYMENT_REGION),
+        # allow cross account access to the kms key
+        kms_key.add_to_resource_policy(
+            iam.PolicyStatement(
+                actions=[
+                    "kms:Encrypt",
+                    "kms:Decrypt",
+                    "kms:ReEncrypt*",
+                    "kms:GenerateDataKey*",
+                    "kms:DescribeKey",
+                ],
+                resources=[
+                    "*",
+                ],
+                principals=[
+                    iam.ArnPrincipal(f"arn:aws:iam::{dev_account}:root"),
+                ],
             )
         )
+
+        s3_artifact = s3.Bucket(
+            self,
+            "MLOpsSmTemplatePipelineArtifactBucket",
+            bucket_name=f"{app_prefix}-sm-template-pipeline-bucket-{set_name}",
+            encryption_key=kms_key,
+            versioned=True,
+            auto_delete_objects=True,
+            removal_policy=aws_cdk.RemovalPolicy.DESTROY,
+        )
+
+        # Block insecure requests to the bucket
+        s3_artifact.add_to_resource_policy(
+            iam.PolicyStatement(
+                sid="AllowSSLRequestsOnly",
+                actions=["s3:*"],
+                effect=iam.Effect.DENY,
+                resources=[
+                    s3_artifact.bucket_arn,
+                    s3_artifact.arn_for_objects(key_pattern="*"),
+                ],
+                conditions={"Bool": {"aws:SecureTransport": "false"}},
+                principals=[iam.AnyPrincipal()],
+            )
+        )
+
+        # Tooling account access to objects in the bucket
+        s3_artifact.add_to_resource_policy(
+            iam.PolicyStatement(
+                sid="AddToolingPermissions",
+                actions=["s3:*"],
+                resources=[
+                    s3_artifact.arn_for_objects(key_pattern="*"),
+                    s3_artifact.bucket_arn,
+                ],
+                principals=[
+                    iam.ArnPrincipal(f"arn:aws:iam::{cdk.Aws.ACCOUNT_ID}:root"),
+                ],
+            )
+        )
+
+        # Hub account access to objects in the bucket
+        s3_artifact.add_to_resource_policy(
+            iam.PolicyStatement(
+                sid="AddCrossAccountPermissions",
+                actions=["s3:List*", "s3:Get*", "s3:Put*"],
+                resources=[
+                    s3_artifact.arn_for_objects(key_pattern="*"),
+                    s3_artifact.bucket_arn,
+                ],
+                principals=[
+                    iam.ArnPrincipal(f"arn:aws:iam::{dev_account}:root"),
+                ],
+            )
+        )
+
+        return s3_artifact

@@ -15,66 +15,46 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+
+import os
+import aws_cdk as cdk
 from aws_cdk import (
-    BundlingOptions,
-    BundlingOutput,
-    DockerImage,
     Stack,
     aws_codecommit as codecommit,
-    aws_s3_assets as s3_assets,
 )
 
 from constructs import Construct
+from cdk_utilities.zip_utils import ZipUtility
+from cdk_utilities.cdk_app_config import (
+    PipelineConfig,
+    CodeCommitConfig
+)
 
-from mlops_sm_project_template.config.constants import CODE_COMMIT_REPO_NAME, PIPELINE_BRANCH
 
+class CdkPipelineCodeCommitStack(Stack):
+    INSTANCE = None
 
-class CodeCommitStack(Stack):
-    """
-    CodeCommit Stack
-    CodeCommit stack which provisions an AWS CodeCommit repository based on the code
-    """
+    def __init__(self, scope: Construct, construct_id: str, conf: CodeCommitConfig, **kwargs):
+        super().__init__(scope, construct_id, **kwargs)
 
-    def __init__(
-        self,
-        scope: Construct,
-        id: str,
-        # cloud_assembly_artifact: codepipeline.Artifact,
-        **kwargs,
-    ):
-        super().__init__(scope, id, **kwargs)
+        base_dir: str = os.path.abspath(f'{os.path.dirname(__file__)}{os.path.sep}..')
 
-        repo_asset = s3_assets.Asset(
-            self,
-            "DeployAsset",
-            path="",
-            bundling=BundlingOptions(
-                image=DockerImage.from_build("mlops_sm_project_template/cdk_helper_scripts/zip-image"),
-                command=[
-                    "sh",
-                    "-c",
-                    """make clean-python && zip -r /asset-output/project_template_repo.zip . -x "*.git*" -x "*cdk.out*"  -x "*.DS_Store*" """,
-                ],
-                output_type=BundlingOutput.ARCHIVED,
-            ),
-        )
-
-        # Create source repo from seed bucket/key
-        build_app_cfnrepository = codecommit.CfnRepository(
+        self.repo = codecommit.Repository(
             self,
             "BuildAppCodeRepo",
-            repository_name=CODE_COMMIT_REPO_NAME,
-            code=codecommit.CfnRepository.CodeProperty(
-                s3=codecommit.CfnRepository.S3Property(
-                    bucket=repo_asset.s3_bucket_name,
-                    key=repo_asset.s3_object_key,
-                    object_version=None,
-                ),
-                branch_name=PIPELINE_BRANCH,
-            ),
+            repository_name=conf.repo_name,
+            description="CDK Code with Sagemaker Projects Service Catalog products",
+            code=codecommit.Code.from_zip_file(file_path=ZipUtility.create_zip(base_dir), branch=conf.branch_name)
         )
 
-        # Reference the newly created repository
-        backend_repository = codecommit.Repository.from_repository_name(
-            self, "ProjectTemplateRepo", build_app_cfnrepository.attr_name
-        )
+    @classmethod
+    def get_repo(cls, scope, pipeline_conf: PipelineConfig) -> codecommit.Repository:
+        if not cls.INSTANCE:
+            cls.INSTANCE = CdkPipelineCodeCommitStack(
+                scope,
+                'ml-sc-cc-repo',
+                conf=pipeline_conf.code_commit,
+                env=cdk.Environment(account=str(pipeline_conf.account), region=pipeline_conf.region)
+            )
+        return cls.INSTANCE.repo
+
