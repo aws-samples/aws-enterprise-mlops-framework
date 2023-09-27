@@ -365,5 +365,5 @@ class MLOpsStack(sc.ProductStack):
             preprod_account=preprod_account,
             prod_account=prod_account,
             deployment_region=deployment_region,
-            create_model_event_rule=True,
+            create_model_event_rule=False,
         )
