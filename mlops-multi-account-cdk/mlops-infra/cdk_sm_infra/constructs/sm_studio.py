@@ -15,14 +15,12 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import os
 from dataclasses import dataclass, field
 from typing import List
-import os
 
-import aws_cdk
 import aws_cdk as core
 from aws_cdk import (
-    Stack,
     CfnParameter,
     aws_iam as iam,
     aws_lambda as lambda_,
@@ -34,8 +32,8 @@ from aws_cdk.custom_resources import Provider
 from constructs import Construct
 from dataclasses_json import DataClassJsonMixin
 
-from mlops_infra.config.config_mux import StageYamlDataClassConfig
-from mlops_infra.constructs.sm_roles import SMRoles
+from cdk_sm_infra.config.config_mux import StageYamlDataClassConfig
+from cdk_sm_infra.constructs.sm_roles import SMRoles
 
 
 @dataclass
@@ -68,26 +66,18 @@ class SMUserProfiles(StageYamlDataClassConfig):
         return users
 
 
-class SagemakerStudioStack(Stack):
+class SMStudio(Construct):
     def __init__(
             self,
             scope: Construct,
             construct_id: str,
             app_prefix: str,
             vpc: ec2.IVpc = None,
-            subnets: List[ec2.Subnet] = [],
-            **kwargs,
+            subnets: List[ec2.Subnet] = []
     ) -> None:
-        super().__init__(scope, construct_id, **kwargs)
+        super().__init__(scope, construct_id)
 
         self.base_dir: str = os.path.abspath(f'{os.path.dirname(__file__)}')
-        # # uncomment this block of code when you want to use your own AWS networking setup
-        # stage_name = Stage.of(self).stage_name.lower()
-
-        # networking = Networking(self, "Networking", stage_name)
-
-        # vpc = networking.vpc
-        # subnets = networking.subnets
 
         domain_name = CfnParameter(
             self,
@@ -162,7 +152,7 @@ class SagemakerStudioStack(Stack):
             self,
             "sg-project-function",
             runtime=lambda_.Runtime.PYTHON_3_11,
-            entry="mlops_infra/functions/sm_studio/enable_sm_projects",
+            entry="cdk_sm_infra/functions/sm_studio/enable_sm_projects",
             timeout=core.Duration.seconds(120),
         )
 

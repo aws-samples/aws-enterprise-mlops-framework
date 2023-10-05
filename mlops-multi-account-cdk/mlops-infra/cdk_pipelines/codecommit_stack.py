@@ -64,6 +64,7 @@ class CdkPipelineCodeCommitStack(Stack):
                 scope,
                 'ml-infra-cc-repo',
                 conf=pipeline_conf.code_commit.infra,
+                description='CDK stack for creating MLOps Infra pipeline codecommit repository',
                 env=cdk.Environment(account=str(pipeline_conf.account), region=pipeline_conf.region)
             )
         return cls.INSTANCE.repo

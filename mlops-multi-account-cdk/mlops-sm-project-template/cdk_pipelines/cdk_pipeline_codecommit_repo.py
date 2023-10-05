@@ -64,6 +64,7 @@ class CdkPipelineCodeCommitStack(Stack):
                 scope,
                 'ml-sc-cc-repo',
                 conf=pipeline_conf.code_commit.project_template,
+                description='CDK stack for creating MLOps Sagemaker Project Template pipeline codecommit repository',
                 env=cdk.Environment(account=str(pipeline_conf.account), region=pipeline_conf.region)
             )
         return cls.INSTANCE.repo

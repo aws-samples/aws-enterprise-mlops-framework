@@ -15,30 +15,36 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from aws_cdk import (
-    Stack,
-)
 from constructs import Construct
-from cdk_sm_infra.constructs.sm_network import SMNetwork
-from cdk_sm_infra.constructs.sm_studio_infra import SMStudioInfra
+from cdk_sm_infra.constructs.sm_studio_network import SMStudioNetwork
+from cdk_sm_infra.constructs.sm_studio import SMStudio
 
 
-class SagemakerInfraStack(Stack):
+class SMStudioInfra(Construct):
 
     def __init__(
             self,
             scope: Construct,
             construct_id: str,
-            app_prefix: str,
-            deploy_sm_domain: bool = False,
-            **kwargs,
+            app_prefix: str
     ) -> None:
-        super().__init__(scope, construct_id, **kwargs)
+        super().__init__(scope, construct_id)
 
-        # TODO: If SM Studio is not created in the dev account, the mlops-sm-project-template Service Catalog
-        #  Portfolio still expects an execution role in as SSM /mlops/role/lead which will have to be created
-        #  manually and will need to have ssm:PutParameter policy
-        if deploy_sm_domain:
-            sm_infra = SMStudioInfra(self, "sagemaker-studio", app_prefix=app_prefix)
-        else:
-            sm_infra = SMNetwork(self, 'sm_network')
+        network = SMStudioNetwork(self, "sm_studio_network")
+        subnets = network.primary_vpc.private_subnets
+
+        # # uncomment this block of code when you want to use your own AWS networking setup
+        # stage_name = Stage.of(self).stage_name.lower()
+
+        # networking = Networking(self, "Networking", stage_name)
+
+        # vpc = networking.vpc
+        # subnets = networking.subnets
+
+        sagemaker_studio = SMStudio(
+            self,
+            "sagemaker-studio",
+            app_prefix=app_prefix,
+            vpc=network.primary_vpc,
+            subnets=subnets
+        )

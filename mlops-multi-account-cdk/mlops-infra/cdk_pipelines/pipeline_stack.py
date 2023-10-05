@@ -39,10 +39,10 @@ from mlops_commons.utilities.cdk_app_config import (
     PipelineConfig, CodeCommitConfig
 )
 from mlops_commons.utilities.log_helper import LogHelper
-from mlops_infra.sm_infra_stack import SagemakerInfraStack
+from cdk_sm_infra.sm_infra_stack import SagemakerInfraStack
 
 
-class MLOpsInfraStage(Stage):
+class SagemakerInfraStage(Stage):
     """
     MLOpsInfra Stage
     """
@@ -109,7 +109,7 @@ class CdkPipelineStack(Stack):
                 continue
 
             pipeline.add_stage(
-                MLOpsInfraStage(
+                SagemakerInfraStage(
                     self,
                     stage.stage_name,
                     app_prefix=app_prefix,
