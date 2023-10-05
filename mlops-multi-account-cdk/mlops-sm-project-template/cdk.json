@@ -1,5 +1,5 @@
 {
-  "app": "python3 app.py",
+  "app": "python3 app.py WARN",
   "watch": {
     "include": [
       "**"
@@ -21,6 +21,7 @@
     "@aws-cdk/aws-lambda:recognizeVersionProps": true,
     "@aws-cdk/aws-cloudfront:defaultSecurityPolicyTLSv1.2_2021": true,
     "@aws-cdk-containers/ecs-service-extensions:enableDefaultLogDriver": true,
+    "@aws-cdk/aws-servicecatalog:assetsManuallyAddBucketPermissions": true,
     "@aws-cdk/core:target-partitions": [
       "aws",
       "aws-cn"

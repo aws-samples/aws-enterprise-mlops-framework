@@ -14,11 +14,18 @@
 # HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+import sys
+import os
+import logging
+from logging import Logger
 
-CODE_COMMIT_REPO_NAME = "mlops-infra"
-PIPELINE_BRANCH = "main"
 
-PIPELINE_ACCOUNT = ""  # account to host the pipeline handling updates of this repository
+class LogHelper:
+    logging.basicConfig(
+        level=logging.getLevelName(str(sys.argv[1]))
+        if len(sys.argv) > 1 else logging.getLevelName(os.getenv('LOG_LEVEL', 'WARNING'))
+    )
 
-DEFAULT_DEPLOYMENT_REGION = "eu-west-1"
-APP_PREFIX = "mlops"
+    @staticmethod
+    def get_logger(logger_class_ref) -> Logger:
+        return logging.getLogger(logger_class_ref.__class__.__name__)

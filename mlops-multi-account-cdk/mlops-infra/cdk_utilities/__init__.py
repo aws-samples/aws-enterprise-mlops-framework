@@ -15,10 +15,10 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-CODE_COMMIT_REPO_NAME = "mlops-sm-project-template"
-PIPELINE_BRANCH = "main"
+import os
+import sys
 
-PIPELINE_ACCOUNT = ""  # account used to host the pipeline handling updates of this repository
-
-DEFAULT_DEPLOYMENT_REGION = "eu-west-1"
-APP_PREFIX = "mlops-cdk"
+mlops_commons_base_dir: str = os.path.abspath(f'{os.path.dirname(__file__)}'
+                                              f'{os.path.sep}..{os.path.sep}..{os.path.sep}mlops-commons')
+if os.path.exists(mlops_commons_base_dir):
+    sys.path.append(mlops_commons_base_dir)

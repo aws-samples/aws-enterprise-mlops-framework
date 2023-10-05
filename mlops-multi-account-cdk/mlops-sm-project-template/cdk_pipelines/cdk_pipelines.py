@@ -31,9 +31,9 @@ from aws_cdk import (
 from constructs import Construct
 
 from cdk_service_catalog.sm_service_catalog import SageMakerServiceCatalog
-from cdk_utilities.cdk_app_config import (
+from mlops_commons.utilities.cdk_app_config import (
     DeploymentStage,
-    PipelineConfig
+    PipelineConfig, CodeCommitConfig
 )
 
 
@@ -60,34 +60,35 @@ class CdkPipelineStack(Stack):
         dev_account: str = str(deploy_conf.account)
         dev_region: str = deploy_conf.region
 
-        # repo: codecommit.Repository = CdkPipelineCodeCommitStack.get_repo(scope, pipeline_conf)
+        code_commit_conf: CodeCommitConfig = pipeline_conf.code_commit.project_template
         repo: codecommit.IRepository = codecommit.Repository.from_repository_name(
-            self, "ProjectTemplateRepo", repository_name=pipeline_conf.code_commit.repo_name
+            self, "ProjectTemplateRepo", repository_name=code_commit_conf.repo_name
         )
 
         artifact_bucket = self.create_pipeline_artifact_bucket(
             dev_account=dev_account,
             app_prefix=app_prefix,
-            set_name=set_name,
-            pipeline_region=pipeline_conf.region
+            set_name=set_name
         )
 
         pipeline = pipelines.CodePipeline(
             self,
             "Pipeline",
-            pipeline_name=f"{app_prefix}-service-catalog-{pipeline_conf.code_commit.branch_name}-{set_name}",
+            pipeline_name=f"{app_prefix}-service-catalog-"
+                          f"{code_commit_conf.branch_name}-{set_name}",
             synth=pipelines.ShellStep(
                 "Synth",
-                input=pipelines.CodePipelineSource.code_commit(repo, pipeline_conf.code_commit.branch_name),
+                input=pipelines.CodePipelineSource.code_commit(repo, code_commit_conf.branch_name),
                 install_commands=[
                     "npm install -g aws-cdk",
                     "pip install -r requirements.txt",
                 ],
                 commands=[
-                    f"cdk synth --context dev_account={dev_account} --context dev_region={dev_region}",
+                    f"cdk synth --no-lookup",
                 ],
             ),
             cross_account_keys=True,
+            self_mutation=True,
             artifact_bucket=artifact_bucket,
 
         )
@@ -106,8 +107,7 @@ class CdkPipelineStack(Stack):
         # General tags applied to all resources created on this scope (self)
         Tags.of(self).add("cdk-app", f"{app_prefix}-sm-template")
 
-    def create_pipeline_artifact_bucket(self, dev_account: str,
-                                        app_prefix: str, set_name: str, pipeline_region: str) -> s3.Bucket:
+    def create_pipeline_artifact_bucket(self, dev_account: str, app_prefix: str, set_name: str) -> s3.Bucket:
         # create kms key to be used by the assets bucket
         kms_key = kms.Key(
             self,

@@ -35,7 +35,7 @@ from cdk_service_catalog.products.constructs.build_pipeline import BuildPipeline
 from cdk_service_catalog.products.constructs.deploy_pipeline import DeployPipelineConstruct
 from cdk_service_catalog.products.constructs.ssm import SSMConstruct
 
-from cdk_utilities.zip_utils import ZipUtility
+from mlops_commons.utilities.zip_utils import ZipUtility
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 

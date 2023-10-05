@@ -19,22 +19,22 @@
 
 # !/usr/bin/env python3
 
-import logging
+import cdk_utilities
 from logging import Logger
-
 import aws_cdk as cdk
 
 from cdk_pipelines.cdk_pipeline_codecommit_repo import CdkPipelineCodeCommitStack
 from cdk_pipelines.cdk_pipelines import CdkPipelineStack
-from cdk_utilities.cdk_app_config import CdkAppConfig, DeploymentStage
-from cdk_utilities.config_helper import ConfigHelper
+from mlops_commons.utilities.cdk_app_config import CdkAppConfig, DeploymentStage
+from mlops_commons.utilities.config_helper import ConfigHelper
+from mlops_commons.utilities.log_helper import LogHelper
 
 
 class MLOpsCdkApp:
-    logging.basicConfig(level=logging.INFO)
 
     def __init__(self):
-        self.logger: Logger = logging.getLogger(self.__class__.__name__)
+        self.logger: Logger = LogHelper.get_logger(self)
+        self.logger.info(f'mlops_commons path : {cdk_utilities.mlops_commons_base_dir}')
 
     def main(self):
 

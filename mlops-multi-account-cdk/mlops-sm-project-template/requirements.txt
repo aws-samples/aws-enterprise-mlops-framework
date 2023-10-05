@@ -1,8 +1,8 @@
 aws-cdk-lib
-awscli
+awscliv2
 boto3
 constructs
-
+dataclasses-json
 jupyter
 pre-commit
 yamldataclassconfig

@@ -1,0 +1,96 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# SPDX-License-Identifier: MIT-0
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy of this
+# software and associated documentation files (the "Software"), to deal in the Software
+# without restriction, including without limitation the rights to use, copy, modify,
+# merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+# PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+cdk_app_config:
+  app_prefix:   # optional, default to mlops-cdk
+  pipeline:
+    account:  # optional, default to environment variable 'CDK_DEFAULT_ACCOUNT'
+    region:   # optional, default to environment variable 'CDK_DEFAULT_REGION'
+    bootstrap:
+      enabled:    # optional, default True
+      execution_policy_filepath: # optional, default to look for a file name in mlops_commons/config/execution_policy_AWS-ACCOUNT-ID_AWS-REGION.json
+      execution_policy_arn: # optional, default to 'arn:aws:iam::aws:policy/AdministratorAccess', this will only be used when there is no value provided to 'execution_policy_filepath'
+      aws_profile: # optional, default to profile name by cdk_AWS-ACCOUNT-ID_AWS-REGION
+    code_commit:
+      infra:
+        repo_name:   # optional, default to mlops-infra
+        branch_name: # optional, default to main
+      project_template:
+        repo_name:   # optional, default to mlops-sm-project-template
+        branch_name: # optional, default to main
+
+  deployments:
+    - set_name: first-example # mandatory
+      enabled: # optional, default True
+      default_region: # optional, default to environment variable 'CDK_DEFAULT_REGION'
+      stages:
+        - stage_name: dev # mandatory value must be dev
+          account:        # mandatory
+          region:         # optional, default to value to attribute of 'default_region'
+          enabled:        # optional, default True
+          bootstrap:
+            enabled:      # optional, default True
+            execution_policy_filepath: # optional, default to look for a file name in mlops_commons/config/execution_policy_AWS-ACCOUNT-ID_AWS-REGION.json
+            execution_policy_arn:      # optional, default to 'arn:aws:iam::aws:policy/AdministratorAccess', this will only be used when there is no value provided to 'execution_policy_filepath'
+            aws_profile:               # optional, default to profile name by cdk_AWS-ACCOUNT-ID_AWS-REGION
+        - stage_name: preprod  # mandatory value must be preprod
+          account:        # mandatory
+          region:         # optional, default to value to attribute of 'default_region'
+          enabled:        # optional, default True
+          bootstrap:
+            enabled:      # optional, default True
+            execution_policy_filepath: # optional, default to look for a file name in mlops_commons/config/execution_policy_AWS-ACCOUNT-ID_AWS-REGION.json
+            execution_policy_arn:      # optional, default to 'arn:aws:iam::aws:policy/AdministratorAccess', this will only be used when there is no value provided to 'execution_policy_filepath'
+            aws_profile:               # optional, default to profile name by cdk_AWS-ACCOUNT-ID_AWS-REGION
+
+        - stage_name: prod # mandatory value must be prod
+          account:         # mandatory
+          region:          # optional, default to value to attribute of 'default_region'
+          enabled:         # optional, default True
+          bootstrap:
+            enabled:       # optional, default True
+            execution_policy_filepath: # optional, default to look for a file name in mlops_commons/config/execution_policy_AWS-ACCOUNT-ID_AWS-REGION.json
+            execution_policy_arn:      # optional, default to 'arn:aws:iam::aws:policy/AdministratorAccess', this will only be used when there is no value provided to 'execution_policy_filepath'
+            aws_profile:               # optional, default to profile name by cdk_AWS-ACCOUNT-ID_AWS-REGION
+
+
+
+    - set_name: second-example
+      stages:
+        - stage_name: dev
+          account: xxxxxxxxxxxx
+          bootstrap:
+            aws_profile: profile_name
+        - stage_name: preprod
+          account: xxxxxxxxxxxx
+          bootstrap:
+            aws_profile: profile_name
+        - stage_name: prod
+          account: xxxxxxxxxxxx
+          bootstrap:
+            aws_profile: profile_name
+
+    - set_name: third-example
+      stages:
+        - stage_name: dev
+          account: xxxxxxxxxxxx
+        - stage_name: preprod
+          account: xxxxxxxxxxxx
+        - stage_name: prod
+          account: xxxxxxxxxxxx
+

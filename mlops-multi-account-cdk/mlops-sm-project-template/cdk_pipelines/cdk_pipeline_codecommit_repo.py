@@ -17,6 +17,9 @@
 
 
 import os
+from typing import List
+
+import cdk_utilities
 import aws_cdk as cdk
 from aws_cdk import (
     Stack,
@@ -24,8 +27,8 @@ from aws_cdk import (
 )
 
 from constructs import Construct
-from cdk_utilities.zip_utils import ZipUtility
-from cdk_utilities.cdk_app_config import (
+from mlops_commons.utilities.zip_utils import ZipUtility
+from mlops_commons.utilities.cdk_app_config import (
     PipelineConfig,
     CodeCommitConfig
 )
@@ -37,14 +40,21 @@ class CdkPipelineCodeCommitStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, conf: CodeCommitConfig, **kwargs):
         super().__init__(scope, construct_id, **kwargs)
 
+        source_code_dirs: List[str] = list()
         base_dir: str = os.path.abspath(f'{os.path.dirname(__file__)}{os.path.sep}..')
+        source_code_dirs.append(base_dir)
+        if os.path.exists(cdk_utilities.mlops_commons_base_dir):
+            source_code_dirs.append(cdk_utilities.mlops_commons_base_dir)
 
         self.repo = codecommit.Repository(
             self,
-            "BuildAppCodeRepo",
+            "MLOpsSmProjectTemplatePipelineCodeRepo",
             repository_name=conf.repo_name,
             description="CDK Code with Sagemaker Projects Service Catalog products",
-            code=codecommit.Code.from_zip_file(file_path=ZipUtility.create_zip(base_dir), branch=conf.branch_name)
+            code=codecommit.Code.from_zip_file(file_path=ZipUtility.create_zip(
+                source_code_dirs),
+                branch=conf.branch_name
+            )
         )
 
     @classmethod
@@ -53,7 +63,7 @@ class CdkPipelineCodeCommitStack(Stack):
             cls.INSTANCE = CdkPipelineCodeCommitStack(
                 scope,
                 'ml-sc-cc-repo',
-                conf=pipeline_conf.code_commit,
+                conf=pipeline_conf.code_commit.project_template,
                 env=cdk.Environment(account=str(pipeline_conf.account), region=pipeline_conf.region)
             )
         return cls.INSTANCE.repo
