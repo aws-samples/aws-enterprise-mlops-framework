@@ -68,6 +68,7 @@ class AccountSetup:
                 self.bootstrap_stage_account(
                     app_prefix=cdk_app_config.app_prefix,
                     governance_account=str(pipeline_conf.account),
+                    governance_region=pipeline_conf.region,
                     dev_account=dev_account,
                     set_name=ds.set_name,
                     stage=stage
@@ -78,6 +79,7 @@ class AccountSetup:
     def bootstrap_stage_account(self,
                                 app_prefix: str,
                                 governance_account: str,
+                                governance_region: str,
                                 dev_account: str,
                                 set_name: str,
                                 stage: DeploymentStage):
@@ -92,17 +94,23 @@ class AccountSetup:
             )
             # 'arn:aws:iam::aws:policy/AdministratorAccess'
             self.logger.info(f'Starting to bootstrap '
-                             f'{stage.stage_name} account : {stage.account}, region : {stage.region},'
+                             f'{stage.stage_name}, account : {stage.account}, region : {stage.region}, '
+                             f'pipeline region : {governance_region}'
                              f' with execution policy : "{execution_policy_arn}"')
 
             profile: str = stage_bootstrap_conf.aws_profile
-
+            region: str = stage.region
             accounts_to_trust: str = f'{governance_account}'
+
+            if len(str(stage.region).strip()) == 0:
+                region = governance_region
+                self.logger.info(f' stage_name : {stage.stage_name} account : {stage.account}, '
+                                 f'does not have valid region, so defaulting to pipeline region : {governance_region}')
 
             if str(stage.stage_name).strip().lower() != 'dev':
                 accounts_to_trust = f'{governance_account},{dev_account}'
 
-            cmd: str = f'cdk bootstrap aws://{stage.account}/{stage.region} ' \
+            cmd: str = f'cdk bootstrap aws://{stage.account}/{region} ' \
                        f'--trust {accounts_to_trust} ' \
                        f'--cloudformation-execution-policies {execution_policy_arn} ' \
                        f'--profile {profile}'

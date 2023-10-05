@@ -57,6 +57,11 @@ class CdkPipelineCodeCommitStack(Stack):
             )
         )
 
+    def __new__(cls, scope: Construct, construct_id: str, conf: CodeCommitConfig, **kwargs):
+        if cls.INSTANCE is None:
+            cls.INSTANCE = super().__new__(cls)
+        return cls.INSTANCE
+
     @classmethod
     def get_repo(cls, scope, pipeline_conf: PipelineConfig) -> codecommit.Repository:
         if not cls.INSTANCE:
