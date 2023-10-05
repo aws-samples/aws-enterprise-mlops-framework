@@ -8,7 +8,7 @@ cd "$SCRIPT_PATH/../../" || exit
 
 CONDA_BASE=$(conda info --base)
 source "$CONDA_BASE"/etc/profile.d/conda.sh
-conda init
+conda init | grep -v -i -E "no change|action"
 conda activate cdk-env || exit
 
 python -m mlops_commons.utilities.account_setup

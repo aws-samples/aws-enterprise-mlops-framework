@@ -156,7 +156,7 @@ class AccountSetup:
             line = process.stdout.readline().rstrip()
             if not line and num_lines > 7:
                 break
-            if not error and f'Environment aws://{account}/{region} failed bootstrapping: Error:' in line:
+            if not error and f'Environment aws://{account}/{region} failed bootstrapping:' in line:
                 error = True
             print(line)
             num_lines = num_lines + 1
