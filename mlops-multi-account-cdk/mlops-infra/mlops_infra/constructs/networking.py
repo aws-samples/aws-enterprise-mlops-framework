@@ -33,10 +33,9 @@ class Networking(Construct):
         self,
         scope: Construct,
         construct_id: str,
-        stage_name: str,
-        **kwargs,
+        stage_name: str
     ) -> None:
-        super().__init__(scope, construct_id, **kwargs)
+        super().__init__(scope, construct_id)
 
         # load constants required for each stage
         try:

@@ -32,12 +32,12 @@ class NetworkingStack(Stack):
         self.primary_vpc = ec2.Vpc(
             self,
             "PrimaryVPC",
-            cidr="10.0.0.0/16",
+            ip_addresses=ec2.IpAddresses.cidr("10.0.0.0/16"),
             max_azs=3,
             subnet_configuration=[
                 ec2.SubnetConfiguration(
                     name="Private",
-                    subnet_type=ec2.SubnetType.PRIVATE_WITH_NAT,
+                    subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS,
                     cidr_mask=24,
                 ),
                 ec2.SubnetConfiguration(name="Public", subnet_type=ec2.SubnetType.PUBLIC, cidr_mask=26),
@@ -71,7 +71,7 @@ class NetworkingStack(Stack):
             string_value=self.primary_vpc.vpc_default_security_group,
         )
 
-        ## setup VPC endpoints - they are required for instances were the domain does not have internet access
+        # # setup VPC endpoints - they are required for instances were the domain does not have internet access
 
         # S3 VPC Endpoint
         self.primary_vpc.add_gateway_endpoint("S3Endpoint", service=ec2.GatewayVpcEndpointAwsService.S3)

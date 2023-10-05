@@ -15,32 +15,27 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+from dataclasses import dataclass, field
+from typing import List
+import os
+
+import aws_cdk
+import aws_cdk as core
 from aws_cdk import (
     Stack,
     CfnParameter,
-    Stage,
     aws_iam as iam,
     aws_lambda as lambda_,
     aws_sagemaker as sagemaker,
     aws_ec2 as ec2,
 )
-
 from aws_cdk.aws_lambda_python_alpha import PythonFunction
-
 from aws_cdk.custom_resources import Provider
-
-import aws_cdk as core
-
 from constructs import Construct
-from dataclasses import dataclass, field
 from dataclasses_json import DataClassJsonMixin
 
 from mlops_infra.config.config_mux import StageYamlDataClassConfig
-from mlops_infra.config.constants import APP_PREFIX
 from mlops_infra.constructs.sm_roles import SMRoles
-from mlops_infra.constructs.networking import Networking
-
-from typing import List
 
 
 @dataclass
@@ -65,7 +60,6 @@ class SMUserProfiles(StageYamlDataClassConfig):
     users: List[SMUserProfile] = field(default_factory=list)
 
     def get_users(self, constructor, studio_domain_id, role_arn):
-
         users = []
 
         for user in self.users:
@@ -76,16 +70,18 @@ class SMUserProfiles(StageYamlDataClassConfig):
 
 class SagemakerStudioStack(Stack):
     def __init__(
-        self,
-        scope: Construct,
-        construct_id: str,
-        vpc: ec2.IVpc = None,
-        subnets: List[ec2.Subnet] = [],
-        **kwargs,
+            self,
+            scope: Construct,
+            construct_id: str,
+            app_prefix: str,
+            vpc: ec2.IVpc = None,
+            subnets: List[ec2.Subnet] = [],
+            **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        ## uncomment this block of code when you want to use your own AWS networking setup
+        self.base_dir: str = os.path.abspath(f'{os.path.dirname(__file__)}')
+        # # uncomment this block of code when you want to use your own AWS networking setup
         # stage_name = Stage.of(self).stage_name.lower()
 
         # networking = Networking(self, "Networking", stage_name)
@@ -106,7 +102,7 @@ class SagemakerStudioStack(Stack):
             "S3BucketName",
             type="String",
             description="S3 bucket where data are stored",
-            default=APP_PREFIX,
+            default=app_prefix,
         ).value_as_string
 
         # create roles to be used for sagemaker user profiles and attached to sagemaker studio domain
@@ -162,12 +158,11 @@ class SagemakerStudioStack(Stack):
     """
 
     def enable_sagemaker_projects(self, roles):
-
         event_handler = PythonFunction(
             self,
             "sg-project-function",
-            runtime=lambda_.Runtime.PYTHON_3_9,
-            entry="functions/sm_studio/enable_sm_projects",
+            runtime=lambda_.Runtime.PYTHON_3_11,
+            entry="mlops_infra/functions/sm_studio/enable_sm_projects",
             timeout=core.Duration.seconds(120),
         )
 
@@ -211,12 +206,12 @@ class SagemakerStudioStack(Stack):
     """
 
     def sagemaker_studio_domain(
-        self,
-        domain_name,
-        sagemaker_studio_role,
-        security_group_ids,
-        subnet_ids,
-        vpc_id,
+            self,
+            domain_name,
+            sagemaker_studio_role,
+            security_group_ids,
+            subnet_ids,
+            vpc_id,
     ):
         domain = sagemaker.CfnDomain(
             self,
