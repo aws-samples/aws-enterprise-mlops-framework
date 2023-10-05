@@ -28,10 +28,9 @@ class SMRoles(Construct):
         self,
         scope: Construct,
         construct_id: str,
-        s3_bucket_prefix: str,
-        **kwargs,
+        s3_bucket_prefix: str
     ) -> None:
-        super().__init__(scope, construct_id, **kwargs)
+        super().__init__(scope, construct_id)
 
         # create policies required for the roles
 
@@ -182,7 +181,7 @@ class SMRoles(Construct):
             ],
         )
 
-        ## create role for each persona
+        # # create role for each persona
 
         # role for Data Scientist persona
         self.data_scientist_role = iam.Role(
