@@ -30,6 +30,7 @@ class SagemakerInfraStack(Stack):
             scope: Construct,
             construct_id: str,
             app_prefix: str,
+            use_network_from_stage_config: bool = False,
             deploy_sm_domain: bool = False,
             **kwargs,
     ) -> None:
@@ -39,6 +40,15 @@ class SagemakerInfraStack(Stack):
         #  Portfolio still expects an execution role in as SSM /mlops/role/lead which will have to be created
         #  manually and will need to have ssm:PutParameter policy
         if deploy_sm_domain:
-            sm_infra = SMStudioInfra(self, "sagemaker-studio", app_prefix=app_prefix)
+            sm_infra = SMStudioInfra(
+                self,
+                "sagemaker-studio",
+                app_prefix=app_prefix,
+                use_network_from_stage_config=use_network_from_stage_config
+            )
         else:
-            sm_infra = SMNetwork(self, 'sm_network')
+            sm_infra = SMNetwork(
+                self,
+                'sm_network',
+                use_network_from_stage_config=use_network_from_stage_config
+            )

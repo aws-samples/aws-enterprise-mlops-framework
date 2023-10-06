@@ -22,7 +22,8 @@ from aws_cdk import (
 )
 
 from constructs import Construct
-
+from logging import Logger
+from mlops_commons.utilities.log_helper import LogHelper
 """
 This is an optional construct to setup the Networking resources (VPC and Subnets) from existing resources in the account to be used in the CDK APP.
 """
@@ -36,14 +37,18 @@ class Networking(Construct):
         stage_name: str
     ) -> None:
         super().__init__(scope, construct_id)
-
+        self.logger: Logger = LogHelper.get_logger(self)
         # load constants required for each stage
         try:
-            stage_constants = importlib.import_module(f"mlops_infra.config.{stage_name}.constants")
-        except Exception:
-            stage_constants = importlib.import_module(
-                "mlops_infra.config.dev.constants"
-            )  # use default configs which are inf-dev configs in this case
+            stage_constants = importlib.import_module(f"cdk_sm_infra.config.{stage_name}.constants")
+        except Exception as e:
+            default_stage_module: str = "cdk_sm_infra.config.dev.constants"
+            self.logger.warning(f'error occurred : {str(e)}')
+
+            self.logger.info(f'trying to load default stage module : {default_stage_module}')
+
+            # use default configs which are inf-dev configs in this case
+            stage_constants = importlib.import_module(default_stage_module)
 
         # vpc resource to be used for the endpoint and lambda vpc configs
         self.vpc = ec2.Vpc.from_vpc_attributes(
@@ -55,3 +60,11 @@ class Networking(Construct):
             ec2.Subnet.from_subnet_id(self, f"SUBNET-{subnet_id}", subnet_id)
             for subnet_id in stage_constants.APP_SUBNETS
         ]
+
+        # default security group
+        self.default_security_group = ec2.SecurityGroup.from_secirity_groud_id(
+            self, 'SG', stage_constants.BASE_SECURITY_GROUP, mutable=False)
+        if self.default_security_group is None:
+            self.logger.warning(f'No security group found by : {stage_constants.BASE_SECURITY_GROUP}, '
+                                f'now using the default security group of vpc')
+            self.default_security_group = self.vpc.vpc_default_security_group

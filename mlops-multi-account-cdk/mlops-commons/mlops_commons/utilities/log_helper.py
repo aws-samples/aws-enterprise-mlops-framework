@@ -28,4 +28,5 @@ class LogHelper:
 
     @staticmethod
     def get_logger(logger_class_ref) -> Logger:
-        return logging.getLogger(logger_class_ref.__class__.__name__)
+        return logging.getLogger(
+            logger_class_ref if isinstance(logger_class_ref, str) else logger_class_ref.__class__.__name__)

@@ -52,7 +52,7 @@ class SagemakerInfraStage(Stage):
 
         SagemakerInfraStack(
             self,
-            'MLOpsSagemakerInfraStack',
+            f'mlops-infra',
             app_prefix=app_prefix,
             deploy_sm_domain=deploy_sm_domain,
             **kwargs

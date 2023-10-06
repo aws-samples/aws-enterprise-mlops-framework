@@ -26,8 +26,8 @@ from cdk_sm_infra.constructs.sm_network import SMNetwork
 
 
 class SMStudioNetwork(SMNetwork):
-    def __init__(self, scope: Construct, construct_id: str) -> None:
-        super().__init__(scope, construct_id)
+    def __init__(self, scope: Construct, construct_id: str, use_network_from_stage_config: bool = False) -> None:
+        super().__init__(scope, construct_id, use_network_from_stage_config)
 
         # SageMaker API VPC Endpoint
         self.primary_vpc.add_interface_endpoint(

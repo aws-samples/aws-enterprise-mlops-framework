@@ -26,20 +26,13 @@ class SMStudioInfra(Construct):
             self,
             scope: Construct,
             construct_id: str,
-            app_prefix: str
+            app_prefix: str,
+            use_network_from_stage_config: bool = False
     ) -> None:
         super().__init__(scope, construct_id)
 
-        network = SMStudioNetwork(self, "sm_studio_network")
+        network = SMStudioNetwork(self, "sm_studio_network", use_network_from_stage_config)
         subnets = network.primary_vpc.private_subnets
-
-        # # uncomment this block of code when you want to use your own AWS networking setup
-        # stage_name = Stage.of(self).stage_name.lower()
-
-        # networking = Networking(self, "Networking", stage_name)
-
-        # vpc = networking.vpc
-        # subnets = networking.subnets
 
         sagemaker_studio = SMStudio(
             self,
