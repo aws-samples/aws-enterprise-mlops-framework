@@ -42,7 +42,7 @@ class SagemakerInfraStack(Stack):
         if deploy_sm_domain:
             sm_infra = SMStudioInfra(
                 self,
-                "sagemaker-studio",
+                "sagemaker-studio-infra",
                 app_prefix=app_prefix,
                 use_network_from_stage_config=use_network_from_stage_config
             )
