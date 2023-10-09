@@ -16,8 +16,10 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from constructs import Construct
-from cdk_sm_infra.constructs.sm_studio_network import SMStudioNetwork
+
 from cdk_sm_infra.constructs.sm_studio import SMStudio
+from cdk_sm_infra.constructs.sm_studio_network import SMStudioNetwork
+from cdk_utilities.cdk_infra_app_config import SagemakerConfig, NetworkDeploymentStageConfig
 
 
 class SMStudioInfra(Construct):
@@ -26,18 +28,21 @@ class SMStudioInfra(Construct):
             self,
             scope: Construct,
             construct_id: str,
+            set_name: str,
             app_prefix: str,
-            use_network_from_stage_config: bool = False
+            sagemaker_conf: SagemakerConfig,
+            network_conf: NetworkDeploymentStageConfig
     ) -> None:
         super().__init__(scope, construct_id)
 
-        network = SMStudioNetwork(self, "sm_studio_network", use_network_from_stage_config)
+        network = SMStudioNetwork(self, "sm_studio_network", network_conf)
         subnets = network.primary_vpc.private_subnets
 
         sagemaker_studio = SMStudio(
             self,
             "sagemaker-studio",
             app_prefix=app_prefix,
+            sagemaker_conf=sagemaker_conf,
             vpc=network.primary_vpc,
             subnets=subnets
         )

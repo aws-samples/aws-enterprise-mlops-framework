@@ -19,8 +19,10 @@ from aws_cdk import (
     Stack,
 )
 from constructs import Construct
+
 from cdk_sm_infra.constructs.sm_network import SMNetwork
 from cdk_sm_infra.constructs.sm_studio_infra import SMStudioInfra
+from cdk_utilities.cdk_infra_app_config import SagemakerConfig, NetworkDeploymentStageConfig
 
 
 class SagemakerInfraStack(Stack):
@@ -29,8 +31,10 @@ class SagemakerInfraStack(Stack):
             self,
             scope: Construct,
             construct_id: str,
+            set_name: str,
             app_prefix: str,
-            use_network_from_stage_config: bool = False,
+            network_conf: NetworkDeploymentStageConfig,
+            sagemaker_conf: SagemakerConfig,
             deploy_sm_domain: bool = False,
             **kwargs,
     ) -> None:
@@ -43,12 +47,14 @@ class SagemakerInfraStack(Stack):
             sm_infra = SMStudioInfra(
                 self,
                 "sagemaker-studio-infra",
+                set_name=set_name,
                 app_prefix=app_prefix,
-                use_network_from_stage_config=use_network_from_stage_config
+                network_conf=network_conf,
+                sagemaker_conf=sagemaker_conf
             )
         else:
             sm_infra = SMNetwork(
                 self,
                 'sm_network',
-                use_network_from_stage_config=use_network_from_stage_config
+                network_conf=network_conf
             )

@@ -14,8 +14,7 @@
 # HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-
+import os
 from logging import Logger
 from typing import List
 
@@ -34,6 +33,7 @@ from aws_cdk import (
 )
 from constructs import Construct
 
+from cdk_utilities.cdk_infra_app_config import InfraAppConfig
 from mlops_commons.utilities.cdk_app_config import (
     DeploymentStage,
     PipelineConfig, CodeCommitConfig
@@ -47,13 +47,32 @@ class SagemakerInfraStage(Stage):
     MLOpsInfra Stage
     """
 
-    def __init__(self, scope: Construct, construct_id: str, app_prefix: str, deploy_sm_domain=False, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, set_name: str, stage_name: str,
+                 app_prefix: str, deploy_sm_domain=False, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
+        self.logger: Logger = LogHelper.get_logger(self)
+
+        base_dir: str = os.path.abspath(f'{os.path.dirname(__file__)}{os.path.sep}..')
+        conf: InfraAppConfig = InfraAppConfig()
+
+        config_filepath: str = os.path.join(base_dir, 'config', 'cdk-infra-app.yml')
+        if os.path.exists(config_filepath):
+            conf.load(config_filepath)
+        else:
+            self.logger.info(f'cdk infra app specific configuration not found at : {config_filepath}, '
+                             f'using default configuration')
+        self.logger.debug(f'cdk-infra-app config : {str(conf.cdk_infra_app_config)}')
 
         SagemakerInfraStack(
             self,
             f'mlops-infra',
             app_prefix=app_prefix,
+            set_name=set_name,
+            network_conf=conf.cdk_infra_app_config.network.get_network_stage_config_by(
+                set_name=set_name,
+                stage_name=stage_name
+            ),
+            sagemaker_conf=conf.cdk_infra_app_config.sagemaker,
             deploy_sm_domain=deploy_sm_domain,
             **kwargs
         )
@@ -112,6 +131,8 @@ class CdkPipelineStack(Stack):
                 SagemakerInfraStage(
                     self,
                     stage.stage_name,
+                    set_name=set_name,
+                    stage_name=stage.stage_name,
                     app_prefix=app_prefix,
                     env=aws_cdk.Environment(account=str(stage.account), region=stage.region),
                     deploy_sm_domain=str(stage.stage_name).lower().strip().startswith('dev')

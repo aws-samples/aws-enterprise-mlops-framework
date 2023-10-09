@@ -1,5 +1,5 @@
 {
-  "app": "python3 app.py INFO",
+  "app": "python3 app.py WARN",
   "watch": {
     "include": [
       "**"
@@ -22,6 +22,7 @@
     "@aws-cdk/aws-cloudfront:defaultSecurityPolicyTLSv1.2_2021": true,
     "@aws-cdk-containers/ecs-service-extensions:enableDefaultLogDriver": true,
     "@aws-cdk/aws-ec2:uniqueImdsv2TemplateName": true,
+    "@aws-cdk/aws-ec2:noSubnetRouteTableId": "ack",
     "@aws-cdk/core:target-partitions": [
       "aws",
       "aws-cn"

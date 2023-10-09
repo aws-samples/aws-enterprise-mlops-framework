@@ -1,0 +1,76 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# SPDX-License-Identifier: MIT-0
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy of this
+# software and associated documentation files (the "Software"), to deal in the Software
+# without restriction, including without limitation the rights to use, copy, modify,
+# merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+# PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+cdk_infra_app_config:
+  network:
+    default_create_network:
+      vpc_cidr: "10.0.0.0/16"
+      vpc_max_azs: 3
+      vpc_private_subnet_cidr_mask: 24
+      vpc_public_subnet_cidr_mask: 26
+      vpc_enable_dns_hostnames: True
+      vpc_enable_dns_support: True
+      vpc_nat_gateways: 1
+      vpc_add_s3_endpoint: True
+      vpc_add_kms_endpoint: True
+      vpc_add_ecr_endpoint: True
+      vpc_add_ecr_docker_endpoint: True
+    deployments:
+      - set_name: first-example
+        stages:
+          - stage_name: dev
+            create_network:
+              vpc_cidr: "20.0.0.0/16"
+              vpc_max_azs: 3
+            import_network:
+              vpc_id: "vpc-xxxxxxxxxxx"
+              subnets:
+                - "subnet-xxxxxxxxxxx"
+                - "subnet-xxxxxxxxxxx"
+                - "subnet-xxxxxxxxxxx"
+              base_security_group: "sg-xxxxxxxxxxxxx"
+          - stage_name: preprod
+            create_network:
+              vpc_cidr: "30.0.0.0/16"
+            import_network:
+              vpc_id: "vpc-xxxxxxxxxxxxxxx"
+              subnets:
+                - "subnet-xxxxxxxxxxxxxxxx"
+                - "subnet-xxxxxxxxxxxxxxxx"
+                - "subnet-xxxxxxxxxxxxxxxx"
+              base_security_group: "sg-xxxxxxxxxxxxxx"
+          - stage_name: prod
+            create_network:
+              vpc_cidr: "40.0.0.0/16"
+            import_network:
+              vpc_id: "vpc-xxxxxxxxxxxxxxxxxx"
+              subnets:
+                - "subnet-xxxxxxxxxxxxxxxxxxx"
+                - "subnet-xxxxxxxxxxxxxxxxxxx"
+                - "subnet-xxxxxxxxxxxxxxxxxxx"
+              base_security_group: "sg-xxxxxxxxxxxxx"
+
+  sagemaker:
+    profiles:
+      data_scientists:
+        prefix: ds
+        users:
+          - user_profile_name: data-scientist
+      lead_data_scientists:
+        prefix: lead-ds
+        users:
+          - user_profile_name: lead-data-scientist

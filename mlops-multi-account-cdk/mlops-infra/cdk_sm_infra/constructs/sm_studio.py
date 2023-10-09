@@ -16,8 +16,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import os
-from dataclasses import dataclass, field
-from typing import List
+from typing import List, Any
 
 import aws_cdk as core
 from aws_cdk import (
@@ -30,40 +29,9 @@ from aws_cdk import (
 from aws_cdk.aws_lambda_python_alpha import PythonFunction
 from aws_cdk.custom_resources import Provider
 from constructs import Construct
-from dataclasses_json import DataClassJsonMixin
 
-from cdk_sm_infra.config.config_mux import StageYamlDataClassConfig
 from cdk_sm_infra.constructs.sm_roles import SMRoles
-
-
-@dataclass
-class SMUserProfile(DataClassJsonMixin):
-    user_profile_name: str = ""
-
-    def get_user(self, constructor, prefix, studio_domain_id, role_arn):
-        profile = sagemaker.CfnUserProfile(
-            constructor,
-            f"{prefix}-{self.user_profile_name}",
-            domain_id=studio_domain_id,
-            user_profile_name=self.user_profile_name,
-            user_settings=sagemaker.CfnUserProfile.UserSettingsProperty(execution_role=role_arn),
-        )
-
-        return profile
-
-
-@dataclass
-class SMUserProfiles(StageYamlDataClassConfig):
-    prefix: str = ""
-    users: List[SMUserProfile] = field(default_factory=list)
-
-    def get_users(self, constructor, studio_domain_id, role_arn):
-        users = []
-
-        for user in self.users:
-            users.append(user.get_user(constructor, self.prefix, studio_domain_id, role_arn))
-
-        return users
+from cdk_utilities.cdk_infra_app_config import SagemakerConfig, SagemakerUserProfileConfig
 
 
 class SMStudio(Construct):
@@ -72,6 +40,7 @@ class SMStudio(Construct):
             scope: Construct,
             construct_id: str,
             app_prefix: str,
+            sagemaker_conf: SagemakerConfig,
             vpc: ec2.IVpc = None,
             subnets: List[ec2.Subnet] = []
     ) -> None:
@@ -131,14 +100,14 @@ class SMStudio(Construct):
         self.sagemaker_studio_profiles(
             self.studio_domain.attr_domain_id,
             sm_roles.data_scientist_role.role_arn,
-            "data_scientists.yml",
+            sagemaker_conf.profiles.data_scientists
         )
 
         # lead data scientist profiles
         self.sagemaker_studio_profiles(
             self.studio_domain.attr_domain_id,
             sm_roles.lead_data_scientist_role.role_arn,
-            "lead_data_scientists.yml",
+            sagemaker_conf.profiles.lead_data_scientists
         )
 
     """
@@ -228,10 +197,19 @@ class SMStudio(Construct):
         :param file_name: - Name of yaml file to load
     """
 
-    def sagemaker_studio_profiles(self, studio_domain_id, role_arn, file_name):
-        user_profiles = SMUserProfiles()
-        user_profiles.load_for_stage_file(self, file_name)
+    def sagemaker_studio_profiles(self, studio_domain_id, role_arn, profile_conf: SagemakerUserProfileConfig):
 
-        sm_user_profiles = user_profiles.get_users(self, studio_domain_id, role_arn)
+        sm_user_profiles: List[Any] = list()
+
+        for user in profile_conf.users:
+            sm_user_profiles.append(
+                sagemaker.CfnUserProfile(
+                    self,
+                    f"{profile_conf.prefix}-{user.user_profile_name}",
+                    domain_id=studio_domain_id,
+                    user_profile_name=user.user_profile_name,
+                    user_settings=sagemaker.CfnUserProfile.UserSettingsProperty(execution_role=role_arn),
+                )
+            )
 
         return sm_user_profiles

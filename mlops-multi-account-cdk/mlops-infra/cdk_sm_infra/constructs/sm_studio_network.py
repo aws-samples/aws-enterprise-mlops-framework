@@ -23,11 +23,12 @@ from aws_cdk import (
 from constructs import Construct
 
 from cdk_sm_infra.constructs.sm_network import SMNetwork
+from cdk_utilities.cdk_infra_app_config import NetworkDeploymentStageConfig
 
 
 class SMStudioNetwork(SMNetwork):
-    def __init__(self, scope: Construct, construct_id: str, use_network_from_stage_config: bool = False) -> None:
-        super().__init__(scope, construct_id, use_network_from_stage_config)
+    def __init__(self, scope: Construct, construct_id: str, network_conf: NetworkDeploymentStageConfig) -> None:
+        super().__init__(scope, construct_id, network_conf)
 
         # SageMaker API VPC Endpoint
         self.primary_vpc.add_interface_endpoint(

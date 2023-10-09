@@ -14,32 +14,39 @@
 # HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-from typing import Optional, Any, Tuple
+from logging import Logger
+from typing import Optional, Any, Tuple, List
 
 from aws_cdk import (
-    aws_ec2 as ec2,
-    aws_ssm as ssm, Stage,
-)
+    aws_ssm as ssm, )
 from constructs import Construct
-from cdk_sm_infra.constructs.networking import Networking
-from logging import Logger
+
+from cdk_sm_infra.constructs.create_network import CreateNetwork
+from cdk_sm_infra.constructs.import_network import ImportNetwork
+from cdk_utilities.cdk_infra_app_config import CreateNetworkConfig, \
+    NetworkDeploymentStageConfig, ImportNetworkConfig
 from mlops_commons.utilities.log_helper import LogHelper
 
 
 class SMNetwork(Construct):
-    def __init__(self, scope: Construct, construct_id: str, use_network_from_stage_config: bool = False) -> None:
+    def __init__(self, scope: Construct, construct_id: str, network_conf: NetworkDeploymentStageConfig) -> None:
         super().__init__(scope, construct_id)
 
         self.logger: Logger = LogHelper.get_logger(self)
 
         self.primary_vpc: Optional[Any] = None
-        self.private_subnets: Optional[Any] = None
-        self.default_security_group: Optional[Any] = None
+        self.private_subnets: Optional[List[Any]] = None
+        self.default_security_group: Optional[str] = None
 
-        if use_network_from_stage_config:
-            self.primary_vpc, self.private_subnets, self.default_security_group = self.network_from_stage_config()
+        import_network_conf: ImportNetworkConfig = network_conf.import_network
+        if import_network_conf:
+            method_args = import_network_conf
+            method_ref = self.import_network
         else:
-            self.primary_vpc, self.private_subnets, self.default_security_group = self.create_network()
+            method_args = network_conf.create_network
+            method_ref = self.create_network
+
+        self.primary_vpc, self.private_subnets, self.default_security_group = method_ref(conf=method_args)
 
         # VPC ID parameters
         vpc_id_param = ssm.StringParameter(
@@ -54,7 +61,7 @@ class SMNetwork(Construct):
             self,
             "PrivateSubnetIDsParameter",
             parameter_name="/vpc/subnets/private/ids",
-            string_list_value=[subnet.subnet_id for subnet in self.primary_vpc.private_subnets],
+            string_list_value=[subnet.subnet_id for subnet in self.private_subnets],
         )
 
         # Default Security Group ID parameters
@@ -65,46 +72,12 @@ class SMNetwork(Construct):
             string_value=self.default_security_group,
         )
 
-    def network_from_stage_config(self) -> Tuple[Any, Any, Any]:
-        stage_name = Stage.of(self).stage_name.lower()
-        self.logger.info(f'using user provided network setup from stage name : {stage_name}')
-        network: Networking = Networking(self, 'custom_network', stage_name)
+    def import_network(self, conf: ImportNetworkConfig) -> Tuple[Any, List[Any], Any]:
+        self.logger.info(f'using user provided network setup : {str(conf)}')
+        network: ImportNetwork = ImportNetwork(self, 'import_network', conf)
         return network.vpc, network.subnets, network.default_security_group
 
-    def create_network(self) -> Tuple[Any, Any, Any]:
-        self.logger.info(f'creating new vpc with  private and public subnet')
-        primary_vpc = ec2.Vpc(
-            self,
-            "PrimaryVPC",
-            ip_addresses=ec2.IpAddresses.cidr("10.0.0.0/16"),
-            max_azs=3,
-            subnet_configuration=[
-                ec2.SubnetConfiguration(
-                    name="Private",
-                    subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS,
-                    cidr_mask=24,
-                ),
-                ec2.SubnetConfiguration(name="Public", subnet_type=ec2.SubnetType.PUBLIC, cidr_mask=26),
-            ],
-            enable_dns_hostnames=True,
-            enable_dns_support=True,
-            nat_gateways=1,
-        )
-
-        # # setup VPC endpoints - they are required for instances were the domain does not have internet access
-
-        # S3 VPC Endpoint
-        primary_vpc.add_gateway_endpoint("S3Endpoint", service=ec2.GatewayVpcEndpointAwsService.S3)
-
-        # KMS VPC Endpoint
-        primary_vpc.add_interface_endpoint("KMSEndpoint", service=ec2.InterfaceVpcEndpointAwsService.KMS)
-
-        # ECR VPC Endpoint
-        primary_vpc.add_interface_endpoint("ECREndpoint", service=ec2.InterfaceVpcEndpointAwsService.ECR)
-
-        # ECR DOCKER VPC Endpoint
-        primary_vpc.add_interface_endpoint(
-            "ECRDockerEndpoint", service=ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER
-        )
-
-        return primary_vpc, primary_vpc.private_subnets, primary_vpc.vpc_default_security_group
+    def create_network(self, conf: CreateNetworkConfig) -> Tuple[Any, List[Any], Any]:
+        self.logger.info(f'creating new vpc with  private and public subnet : {str(conf)}')
+        network: CreateNetwork = CreateNetwork(self, 'create_network', conf)
+        return network.vpc, network.subnets, network.default_security_group
