@@ -182,12 +182,3 @@ class CdkInfraAppConfig(DataClassJsonMixin):
 @dataclass
 class InfraAppConfig(YamlDataClassConfig):
     cdk_infra_app_config: CdkInfraAppConfig = field(default_factory=CdkInfraAppConfig)
-
-
-base_dir: str = os.path.abspath(f'{os.path.dirname(__file__)}{os.path.sep}..')
-conf: InfraAppConfig = InfraAppConfig()
-
-config_filepath: str = os.path.join(base_dir, 'config', 'cdk-infra-app.yml')
-
-conf.load(config_filepath)
-print(f'conf : {str(conf.cdk_infra_app_config.network.get_network_stage_config_by("first-example", "dev"))}')
