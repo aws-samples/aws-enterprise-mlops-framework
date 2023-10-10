@@ -19,7 +19,7 @@
 import os
 from importlib import import_module
 from pathlib import Path
-
+import time
 import aws_cdk
 import aws_cdk as cdk
 from aws_cdk import Stack, Tags
@@ -288,4 +288,9 @@ class SageMakerServiceCatalogProduct(cdk.NestedStack):
         portfolio.set_launch_role(sm_projects_product, launch_role)
         Tags.of(sm_projects_product).add(
             key="sagemaker:studio-visibility", value="true"
+        )
+
+        # adding timestamp to record creation time of the product to resolve caching issue
+        Tags.of(sm_projects_product).add(
+            key="created_at", value=f"{str(time.time())}"
         )
