@@ -49,6 +49,8 @@ class MLOpsStack(sc.ProductStack):
                           "template for real-time deployment"
                           )
 
+    TEMPLATE_VERSION: str = 'v1.0'
+
     SUPPORT_EMAIL: str = 'basic_project@example.com'
 
     SUPPORT_URL: str = 'https://example.com/support/basic_project'
@@ -67,6 +69,10 @@ class MLOpsStack(sc.ProductStack):
     @classmethod
     def get_product_name(cls) -> str:
         return cls.TEMPLATE_NAME
+
+    @classmethod
+    def get_product_version(cls) -> str:
+        return cls.TEMPLATE_VERSION
 
     @classmethod
     def get_support_url(cls) -> str:

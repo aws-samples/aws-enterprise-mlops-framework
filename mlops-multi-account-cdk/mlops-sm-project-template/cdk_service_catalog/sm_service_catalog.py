@@ -19,7 +19,7 @@
 import os
 from importlib import import_module
 from pathlib import Path
-import time
+import datetime
 import aws_cdk
 import aws_cdk as cdk
 from aws_cdk import Stack, Tags
@@ -260,6 +260,11 @@ class SageMakerServiceCatalogProduct(cdk.NestedStack):
         except AttributeError:
             support_description = 'Mention about your support details'
 
+        try:
+            product_version = template_module.MLOpsStack.get_product_version()
+        except AttributeError:
+            product_version = 'v1'
+
         sm_projects_product = servicecatalog.CloudFormationProduct(
             self,
             short_name,
@@ -275,7 +280,7 @@ class SageMakerServiceCatalogProduct(cdk.NestedStack):
                             **kwargs,
                         )
                     ),
-                    product_version_name="v1",
+                    product_version_name=product_version,
                     validate_template=True,
                 )
             ],
@@ -292,5 +297,5 @@ class SageMakerServiceCatalogProduct(cdk.NestedStack):
 
         # adding timestamp to record creation time of the product to resolve caching issue
         Tags.of(sm_projects_product).add(
-            key="created_at", value=f"{str(time.time())}"
+            key="created_at", value=f"{datetime.datetime.utcnow().isoformat()}"
         )

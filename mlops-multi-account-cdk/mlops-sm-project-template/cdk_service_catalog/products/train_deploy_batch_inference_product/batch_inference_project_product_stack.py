@@ -53,6 +53,8 @@ class MLOpsStack(sc.ProductStack):
 
     TEMPLATE_NAME: str = "MLOps Batch Inference template to build and deploy SageMaker pipeline"
 
+    TEMPLATE_VERSION: str = 'v1.0'
+
     SUPPORT_EMAIL: str = 'batch_inference_project@example.com'
 
     SUPPORT_URL: str = 'https://example.com/support/batch_inference_project'
@@ -71,6 +73,10 @@ class MLOpsStack(sc.ProductStack):
     @classmethod
     def get_product_name(cls) -> str:
         return cls.TEMPLATE_NAME
+
+    @classmethod
+    def get_product_version(cls) -> str:
+        return cls.TEMPLATE_VERSION
 
     @classmethod
     def get_support_url(cls) -> str:
