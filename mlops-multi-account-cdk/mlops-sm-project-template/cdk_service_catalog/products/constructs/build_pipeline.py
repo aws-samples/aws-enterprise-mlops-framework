@@ -39,10 +39,9 @@ class BuildPipelineConstruct(Construct):
             pipeline_artifact_bucket: s3.IBucket,
             model_package_group_name: str,
             repository: codecommit.Repository,
-            ecr_repository_name: Optional[str] = None,
-            **kwargs,
+            ecr_repository_name: Optional[str] = None
     ) -> None:
-        super().__init__(scope, construct_id, **kwargs)
+        super().__init__(scope, construct_id)
 
         # Define resource names
         pipeline_name = f"{project_name}-{construct_id}"
@@ -116,10 +115,11 @@ class BuildPipelineConstruct(Construct):
                             s3_artifact.bucket_arn,
                             f"{s3_artifact.bucket_arn}/*",
                             "arn:aws:s3:::sagemaker-*",
+                            "arn:aws:s3:::jumpstart-*"
                         ],
                     ),
                     iam.PolicyStatement(
-                        actions=["iam:PassRole"],
+                        actions=["iam:PassRole", "iam:GetRole"],
                         resources=[sagemaker_execution_role.role_arn],
                     ),
                     iam.PolicyStatement(

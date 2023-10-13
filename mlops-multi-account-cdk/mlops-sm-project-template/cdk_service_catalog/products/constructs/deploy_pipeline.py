@@ -47,10 +47,9 @@ class DeployPipelineConstruct(Construct):
             deployment_region: str,
             create_model_event_rule: bool,
             ecr_repo_arn: Optional[str] = None,
-            model_bucket_arn: Optional[str] = None,
-            **kwargs,
+            model_bucket_arn: Optional[str] = None
     ) -> None:
-        super().__init__(scope, construct_id, **kwargs)
+        super().__init__(scope, construct_id)
 
         # Define resource names
         pipeline_name = f"{project_name}-{construct_id}"
