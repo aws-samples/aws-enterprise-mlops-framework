@@ -15,7 +15,11 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from deploy_endpoint.deploy_endpoint_stack import DeployEndpointStack
+
+# This script is the main script of the cdk application. It controls which stacks are created when running cdk synth or cdk deploy in the repository
+# In particular, this script is responsible for creating the "BackendStack" for the dev, preprod and prod environment. Through cdk synth it will accordingly generate 3 CloudFormation templates (in cdk.out/)
+
+from backend_stack import BackendStack
 from config.constants import (
     DEFAULT_DEPLOYMENT_REGION,
     DEV_ACCOUNT,
@@ -32,8 +36,8 @@ dev_env = cdk.Environment(account=DEV_ACCOUNT, region=DEFAULT_DEPLOYMENT_REGION)
 preprod_env = cdk.Environment(account=PREPROD_ACCOUNT, region=PREPROD_REGION)
 prod_env = cdk.Environment(account=PROD_ACCOUNT, region=PROD_REGION)
 
-DeployEndpointStack(app, "dev", env=dev_env)
-DeployEndpointStack(app, "preprod", env=preprod_env)
-DeployEndpointStack(app, "prod", env=prod_env)
+BackendStack(app, "dev", env=dev_env)
+BackendStack(app, "preprod", env=preprod_env)
+BackendStack(app, "prod", env=prod_env)
 
 app.synth()

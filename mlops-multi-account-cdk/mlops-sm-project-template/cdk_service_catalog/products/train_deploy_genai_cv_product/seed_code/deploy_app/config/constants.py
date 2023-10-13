@@ -34,3 +34,11 @@ PREPROD_REGION = ssm_client.get_parameter(Name=f"/mlops/{PROJECT_NAME}/preprod/r
 
 PROD_ACCOUNT = ssm_client.get_parameter(Name=f"/mlops/{PROJECT_NAME}/prod/account_id")["Parameter"]["Value"]
 PROD_REGION = ssm_client.get_parameter(Name=f"/mlops/{PROJECT_NAME}/prod/region")["Parameter"]["Value"]
+
+SM_PIPELINE_DEFINITION_S3LOCATION = ssm_client.get_parameter(Name=f"/mlops/{PROJECT_NAME}/inferencepipeline")["Parameter"]["Value"]
+
+# TODO: hardcoded values to retrieve from Data Lake, replace with dynamic ones
+# Solution: post created values from Data Lake to SSM and retrive from here
+# Currently each new deploy app will require developers to come and change the hardcoded values below
+DATA_BUCKET = "YOUR_OUTPUT_DATA_BUCKET"
+DATA_KMS_KEY = "YOUR_OUTPUT_DATA_BUCKET_KMS_ARN"
