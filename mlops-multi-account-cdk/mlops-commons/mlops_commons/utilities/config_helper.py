@@ -69,6 +69,3 @@ class ConfigHelper(object):
     @staticmethod
     def get_config() -> CdkAppConfig:
         return ConfigHelper().app_config.cdk_app_config
-
-
-c: ConfigHelper = ConfigHelper()
