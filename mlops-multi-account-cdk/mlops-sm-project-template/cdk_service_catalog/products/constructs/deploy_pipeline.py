@@ -14,7 +14,7 @@
 # HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
+import os
 import typing
 
 import aws_cdk as cdk
@@ -143,6 +143,11 @@ class DeployPipelineConstruct(Construct):
                 value=project_name
             )
         })
+        environment_variables.update({
+            "INFRA_SET_NAME": codebuild.BuildEnvironmentVariable(
+                value=os.getenv("infra_set_name", 'default')
+            )
+        })
 
         if ecr_repo_arn and model_bucket_arn:
             environment_variables.update({
@@ -190,10 +195,19 @@ class DeployPipelineConstruct(Construct):
                         "build": {
                             "commands": [
                                 "echo Starting cfn scanning `date` in `pwd`",
-                                "echo 'RulesToSuppress:\n- id: W58\n  reason: W58 is an warning raised due to Lambda functions require permission to write CloudWatch Logs, although the lambda role contains the policy that support these permissions cgn_nag continues to through this problem (https://github.com/stelligent/cfn_nag/issues/422)' > cfn_nag_ignore.yml",
+                                "echo 'RulesToSuppress:"
+                                "\n- id: W58\n  reason: W58 is an warning raised due to Lambda functions require "
+                                "permission to write CloudWatch Logs, although the lambda role contains the policy "
+                                "that support these permissions cgn_nag continues to through this problem "
+                                "(https://github.com/stelligent/cfn_nag/issues/422)"
+                                "\n- id: W1200\n  reason: W1200 is an warning raised due to using ec2 instance with "
+                                "nvme ssd ' > cfn_nag_ignore.yml",
                                 # this is temporary solution to an issue with W58 rule with cfn_nag
                                 'mkdir report || echo "dir report exists"',
-                                "SCAN_RESULT=$(cfn_nag_scan --fail-on-warnings --deny-list-path cfn_nag_ignore.yml --input-path  ${TemplateFolder} -o json > ./report/cfn_nag.out.json && echo OK || echo FAILED)",
+                                "SCAN_RESULT=$(cfn_nag_scan --fail-on-warnings --deny-list-path cfn_nag_ignore.yml "
+                                "--input-path  ${TemplateFolder} -o json > ./report/cfn_nag.out.json && echo OK || "
+                                "echo FAILED)",
+                                "echo ./report/cfn_nag.out.json",
                                 "echo Completed cfn scanning `date`",
                                 "echo $SCAN_RESULT",
                                 "echo $FAIL_BUILD",

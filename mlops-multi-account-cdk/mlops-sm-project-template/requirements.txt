@@ -1,8 +1,10 @@
-aws-cdk-lib
-awscliv2
-boto3
-constructs
-dataclasses-json
-jupyter
-pre-commit
-yamldataclassconfig
+awscliv2==2.2.0
+boto3==1.28.63
+aws-cdk-lib==2.100.0
+dataclasses-json==0.6.1
+constructs>=10.0.0,<11.0.0
+yamldataclassconfig==1.5.0
+jupyter== 1.0.0
+pre-commit==3.5.0
+
+

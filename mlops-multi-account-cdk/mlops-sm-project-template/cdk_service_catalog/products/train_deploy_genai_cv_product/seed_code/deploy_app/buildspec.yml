@@ -6,6 +6,7 @@ phases:
       python: 3.11
     commands:
       - pip install --upgrade --force-reinstall "awscli>1.20.30"
+
   build:
     commands:
       - npm install -g aws-cdk

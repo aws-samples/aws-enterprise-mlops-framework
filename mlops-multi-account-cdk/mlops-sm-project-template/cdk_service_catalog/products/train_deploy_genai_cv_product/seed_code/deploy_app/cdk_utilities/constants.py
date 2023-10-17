@@ -19,7 +19,7 @@ import boto3
 import os
 
 ssm_client = boto3.client("ssm")
-
+INFRA_SET_NAME = os.getenv("INFRA_SET_NAME", "")
 PROJECT_NAME = os.getenv("PROJECT_NAME", "")
 PROJECT_ID = os.getenv("PROJECT_ID", "")
 MODEL_PACKAGE_GROUP_NAME = os.getenv("MODEL_PACKAGE_GROUP_NAME", "")
@@ -34,11 +34,3 @@ PREPROD_REGION = ssm_client.get_parameter(Name=f"/mlops/{PROJECT_NAME}/preprod/r
 
 PROD_ACCOUNT = ssm_client.get_parameter(Name=f"/mlops/{PROJECT_NAME}/prod/account_id")["Parameter"]["Value"]
 PROD_REGION = ssm_client.get_parameter(Name=f"/mlops/{PROJECT_NAME}/prod/region")["Parameter"]["Value"]
-
-SM_PIPELINE_DEFINITION_S3LOCATION = ssm_client.get_parameter(Name=f"/mlops/{PROJECT_NAME}/inferencepipeline")["Parameter"]["Value"]
-
-# TODO: hardcoded values to retrieve from Data Lake, replace with dynamic ones
-# Solution: post created values from Data Lake to SSM and retrive from here
-# Currently each new deploy app will require developers to come and change the hardcoded values below
-DATA_BUCKET = "YOUR_OUTPUT_DATA_BUCKET"
-DATA_KMS_KEY = "YOUR_OUTPUT_DATA_BUCKET_KMS_ARN"

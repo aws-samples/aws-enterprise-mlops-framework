@@ -25,8 +25,8 @@ from constructs import Construct
 
 class SSMConstruct(Construct):
     def __init__(self, scope: Construct, construct_id: str, project_name: str, preprod_account: str, prod_account: str,
-                 deployment_region: str, **kwargs) -> None:
-        super().__init__(scope, construct_id, **kwargs)
+                 deployment_region: str) -> None:
+        super().__init__(scope, construct_id)
 
         # SSM parameters for the project
 

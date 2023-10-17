@@ -14,6 +14,7 @@
 # HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+import os
 
 import aws_cdk
 import aws_cdk as cdk
@@ -80,7 +81,7 @@ class CdkPipelineStack(Stack):
                 "Synth",
                 input=pipelines.CodePipelineSource.code_commit(repo, code_commit_conf.branch_name),
                 install_commands=[
-                    "npm install -g aws-cdk",
+                    "npm install -g aws-cdk@2.100.0",
                     "pip install -r requirements.txt",
                 ],
                 commands=[
@@ -92,6 +93,10 @@ class CdkPipelineStack(Stack):
             artifact_bucket=artifact_bucket,
 
         )
+
+        # using as environment variable to pass the set name to concrete implementation of product, this
+        # will be accessed in the deploy_pipeline.py file
+        os.environ["infra_set_name"] = set_name
 
         pipeline.add_stage(
             SageMakerServiceCatalogStage(

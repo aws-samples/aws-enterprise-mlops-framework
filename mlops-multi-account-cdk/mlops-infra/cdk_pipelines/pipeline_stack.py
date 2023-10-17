@@ -102,7 +102,7 @@ class CdkPipelineStack(Stack):
                 "Synth",
                 input=pipelines.CodePipelineSource.code_commit(repo, code_commit_conf.branch_name),
                 install_commands=[
-                    "npm install -g aws-cdk",
+                    "npm install -g aws-cdk@2.100.0",
                     "pip install -r requirements.txt",
                 ],
                 commands=[

@@ -15,29 +15,50 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-
-# This script is the main script of the cdk application. It controls which stacks are created when running cdk synth or cdk deploy in the repository
-# In particular, this script is responsible for creating the "BackendStack" for the dev, preprod and prod environment. Through cdk synth it will accordingly generate 3 CloudFormation templates (in cdk.out/)
-
-from backend_stack import BackendStack
-from config.constants import (
+import logging
+from logging import Logger
+from deploy_endpoint.deploy_endpoint_stack import DeployEndpointStack
+from cdk_utilities.constants import (
     DEFAULT_DEPLOYMENT_REGION,
     DEV_ACCOUNT,
     PREPROD_ACCOUNT,
     PREPROD_REGION,
     PROD_ACCOUNT,
     PROD_REGION,
+    PROJECT_NAME,
+    PROJECT_ID
 )
+from cdk_utilities.cdk_deploy_app_config import ProductionVariantConfig
+from cdk_utilities.config_helper import ConfigHelper
+
 import aws_cdk as cdk
 
-app = cdk.App()
 
-dev_env = cdk.Environment(account=DEV_ACCOUNT, region=DEFAULT_DEPLOYMENT_REGION)
-preprod_env = cdk.Environment(account=PREPROD_ACCOUNT, region=PREPROD_REGION)
-prod_env = cdk.Environment(account=PROD_ACCOUNT, region=PROD_REGION)
+class CdkDeployApp:
+    logging.basicConfig(level=logging.INFO)
 
-BackendStack(app, "dev", env=dev_env)
-BackendStack(app, "preprod", env=preprod_env)
-BackendStack(app, "prod", env=prod_env)
+    def __init__(self):
+        self.logger: Logger = logging.getLogger(self.__class__.__name__)
+        self.logger.info('CdkDeployApp init')
 
-app.synth()
+    def main(self):
+        self.logger.info(f'Starting to deploy app by Project Name: {PROJECT_NAME}, Project Id: {PROJECT_ID}')
+
+        conf: ConfigHelper = ConfigHelper()
+        app = cdk.App()
+
+        for stage, account, region in [
+            ('dev', DEV_ACCOUNT, DEFAULT_DEPLOYMENT_REGION),
+            ('preprod', PREPROD_ACCOUNT, PREPROD_REGION),
+            ('prod', PROD_ACCOUNT, PROD_REGION)
+        ]:
+            pv: ProductionVariantConfig = conf.get_config_by(stage_name=stage)
+            self.logger.info(f'Deploying stage : {stage}, account : {account}, '
+                             f'region : {region}, ProductionVariantConfig : {str(pv)}')
+            DeployEndpointStack(app, stage, product_variant_conf=pv,
+                                env=cdk.Environment(account=account, region=region))
+        app.synth()
+
+
+if __name__ == '__main__':
+    CdkDeployApp().main()

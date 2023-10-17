@@ -64,7 +64,7 @@ class MLOpsInfraCdkApp:
                 pipeline_conf=cac.pipeline,
                 description="CI/CD CDK Pipelines for MLOps Infra",
                 env=cdk.Environment(account=str(cac.pipeline.account), region=cac.pipeline.region)
-            ).add_dependency(CdkPipelineCodeCommitStack.INSTANCE)
+            )
 
         app.synth()
 

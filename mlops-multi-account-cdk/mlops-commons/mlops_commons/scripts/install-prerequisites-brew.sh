@@ -20,7 +20,7 @@ conda init | grep -v -i -E "no change|action"
 [[ -z "$(which docker | grep /docker )" ]] && brew install --cask docker
 
 # install aws cdk
-# setting cdk cli version to 2.100.0 and (aws-cdk-lib@2.100.0 in mlops-commons/requirements.txt) as version onward has
+# setting cdk cli version to 2.100.0 and aws-cdk-lib@2.100.0  as version onward has
 # issue related to s3, as of now latest version is 2.101.0
 # as version onward has issue related to s3, as of now latest version is 2.101.0
 # which is also having this s3 policy issue "Policy has invalid action (Service: S3, Status Code: 400"
@@ -32,10 +32,6 @@ CDK_VERSION=2.100.0
 env_name=cdk-env
 [[ -z "$(conda env list | grep $env_name)" ]] && conda create -n "$env_name" python=3.11 -y
 conda activate "$env_name"
-
-
-# install project common dependencies from mlops-commons/requirements.txt , don't display already installed dependencies
-pip install -r "$SCRIPT_PATH/../requirements.txt" | grep -v "Requirement already satisfied:"
 
 # install project dependencies from requirements.txt , don't display already installed dependencies
 pip install -r "$1/requirements.txt" | grep -v "Requirement already satisfied:"
