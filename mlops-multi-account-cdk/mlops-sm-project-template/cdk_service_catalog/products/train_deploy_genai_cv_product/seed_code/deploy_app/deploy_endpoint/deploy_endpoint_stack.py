@@ -155,6 +155,8 @@ class DeployEndpointStack(Stack):
         # get latest approved model package from the model registry (only from a specific model package group)
         latest_approved_model_package = get_approved_package()
 
+        self.logger.info(f'latest_approved_model_package : {latest_approved_model_package}')
+
         # Sagemaker Model
         model_name = f"{MODEL_PACKAGE_GROUP_NAME}-{timestamp}"
 
