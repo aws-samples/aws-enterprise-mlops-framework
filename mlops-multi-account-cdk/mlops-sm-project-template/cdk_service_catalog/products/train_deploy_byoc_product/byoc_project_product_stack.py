@@ -407,7 +407,6 @@ class MLOpsStack(sc.ProductStack):
             s3_artifact=s3_artifact,
             preprod_account=preprod_account,
             prod_account=prod_account,
-            model_bucket_arn=s3_artifact.bucket_arn,
             ecr_repo_arn=ml_models_ecr_repo.repository_arn,
             deployment_region=deployment_region,
             create_model_event_rule=True,

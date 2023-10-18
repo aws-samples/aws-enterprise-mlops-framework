@@ -46,14 +46,15 @@ class DeployPipelineConstruct(Construct):
             prod_account: str,
             deployment_region: str,
             create_model_event_rule: bool,
-            ecr_repo_arn: Optional[str] = None,
-            model_bucket_arn: Optional[str] = None
+            ecr_repo_arn: Optional[str] = None
     ) -> None:
         super().__init__(scope, construct_id)
 
         # Define resource names
         pipeline_name = f"{project_name}-{construct_id}"
         build_image = codebuild.LinuxBuildImage.STANDARD_7_0
+
+        model_bucket_arn = s3_artifact.bucket_arn
 
         cdk_synth_build_role = iam.Role(
             self,
@@ -149,12 +150,13 @@ class DeployPipelineConstruct(Construct):
             )
         })
 
-        if ecr_repo_arn and model_bucket_arn:
+        environment_variables.update({
+            "MODEL_BUCKET_ARN": codebuild.BuildEnvironmentVariable(value=model_bucket_arn)
+        })
+
+        if ecr_repo_arn:
             environment_variables.update({
                 "ECR_REPO_ARN": codebuild.BuildEnvironmentVariable(value=ecr_repo_arn)
-            })
-            environment_variables.update({
-                "MODEL_BUCKET_ARN": codebuild.BuildEnvironmentVariable(value=model_bucket_arn)
             })
 
         cdk_synth_build = codebuild.PipelineProject(

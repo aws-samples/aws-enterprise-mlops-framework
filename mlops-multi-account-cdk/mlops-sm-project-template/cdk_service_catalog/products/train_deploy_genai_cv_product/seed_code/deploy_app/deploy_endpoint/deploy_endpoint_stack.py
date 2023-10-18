@@ -15,6 +15,9 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import logging
+from logging import Logger
+
 from datetime import datetime, timezone
 
 import constructs
@@ -45,6 +48,7 @@ class DeployEndpointStack(Stack):
     Deploy Endpoint Stack
     Deploy Endpoint stack which provisions SageMaker Model Endpoint resources.
     """
+    logging.basicConfig(level=logging.INFO)
 
     def __init__(
             self,
@@ -54,6 +58,15 @@ class DeployEndpointStack(Stack):
             **kwargs,
     ):
         super().__init__(scope, id, **kwargs)
+        self.logger: Logger = logging.getLogger(self.__class__.__name__)
+
+        self.logger.info(f'PROJECT_ID : {PROJECT_ID}, PROJECT_NAME : {PROJECT_NAME}, '
+                         f'MODEL_PACKAGE_GROUP_NAME :{MODEL_PACKAGE_GROUP_NAME}, '
+                         f'DEV_ACCOUNT : {DEV_ACCOUNT}, ECR_REPO_ARN : {ECR_REPO_ARN}, '
+                         f'MODEL_BUCKET_ARN : {MODEL_BUCKET_ARN}, '
+                         f'product_variant_conf : {product_variant_conf}')
+
+        self.logger.info('Deploying Endpoint Stack')
 
         Tags.of(self).add("sagemaker:project-id", PROJECT_ID)
         Tags.of(self).add("sagemaker:project-name", PROJECT_NAME)
@@ -76,6 +89,8 @@ class DeployEndpointStack(Stack):
             min_length=1,
             default="/vpc/sg/id",
         ).value_as_string
+
+        self.logger.info(f'app_subnet_ids : {app_subnet_ids}, sg_id : {sg_id}')
 
         # iam role that would be used by the model endpoint to run the inference
         model_execution_policy = iam.ManagedPolicy(
@@ -173,7 +188,6 @@ class DeployEndpointStack(Stack):
         kms_key_id = None
         # if the instance type is not having nvme ssd, then create a kms key to encrypt the assets bucket
         if 'd' not in product_variant_conf.instance_type:
-
             # create kms key to be used by the assets bucket
             kms_key = kms.Key(
                 self,
