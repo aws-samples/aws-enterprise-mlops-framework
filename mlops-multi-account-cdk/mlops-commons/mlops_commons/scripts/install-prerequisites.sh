@@ -2,7 +2,7 @@
 # this script uses Homebrew to do the installations for all prerequisites to deploy the solution described in this repository
 
 node_version="v18.18.2"
-
+aws_cdk_mlops_profile='.aws_cdk_mlops_profile'
 miniconda_home_path=~/aws_cdk_mlops/miniconda3
 nodejs_home_path=~/aws_cdk_mlops/nodejs
 export PATH=$miniconda_home_path/bin:$PATH
@@ -68,6 +68,14 @@ update_executable_path(){
       *) echo "not supported shell"
         ;;
     esac
+
+
+    if [[ -z $(grep "export PATH=$path_to_add/bin:" ~/$aws_cdk_mlops_profile) ]]; then
+      echo "export PATH=$path_to_add/bin:$PATH" >> ~/$aws_cdk_mlops_profile
+      echo "adding nodejs path to  ~/$aws_cdk_mlops_profile"
+    fi
+    source ~/$aws_cdk_mlops_profile
+
 }
 
 install_miniconda(){
@@ -102,15 +110,25 @@ install_nodejs(){
      fi
 
   else
+
     os_type="linux"
     file_extension="xz"
+    path_to_add="$nodejs_home_path/node-$node_version/bin"
+
     if [[ -f ~/.bashrc ]]; then
-      if [[ -z $(grep "export PATH=$nodejs_home_path/node-$node_version/bin:" ~/.bash_profile) ]]; then
-        echo export PATH=$nodejs_home_path/node-$node_version/bin:$PATH >> ~/.bashrc
+      if [[ -z $(grep "export PATH=$path_to_add:" ~/.bash_profile) ]]; then
+        echo export PATH=$path_to_add:$PATH >> ~/.bashrc
       fi
       source ~/.bashrc
+      echo "setting ~/.bashrc"
     fi
-    echo "setting ~/.bashrc"
+
+    if [[ -z $(grep "export PATH=$path_to_add:" ~/$aws_cdk_mlops_profile) ]]; then
+      echo "export PATH=$path_to_add:$PATH" >> ~/$aws_cdk_mlops_profile
+      echo "adding nodejs path to  ~/$aws_cdk_mlops_profile"
+    fi
+    source ~/$aws_cdk_mlops_profile
+
     if [[ "$arc_type" == *"_64" ]]; then
        arc_type="x64"
     else

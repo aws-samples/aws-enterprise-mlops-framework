@@ -12,3 +12,7 @@ start_project_setup() {
   # preparing account for cdk application
   "$MLOPS_COMMONS_SCRIPTS_PATH"/mlops_commons/scripts/setup.sh "$SCRIPT_PATH/../"
 }
+
+if [[ "$0" == "${BASH_SOURCE[0]}" ]]; then
+    start_project_setup
+fi
