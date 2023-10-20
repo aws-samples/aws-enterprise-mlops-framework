@@ -16,6 +16,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import os
+from typing import Optional, Any
 
 import aws_cdk
 from aws_cdk import (
@@ -35,6 +36,7 @@ from constructs import Construct
 from cdk_service_catalog.products.constructs.build_pipeline import BuildPipelineConstruct
 from cdk_service_catalog.products.constructs.deploy_pipeline import DeployPipelineConstruct
 from cdk_service_catalog.products.constructs.ssm import SSMConstruct
+from cdk_utilities.seed_code_helper import SeedCodeHelper
 
 from mlops_commons.utilities.zip_utils import ZipUtility
 
@@ -148,12 +150,13 @@ class MLOpsStack(sc.ProductStack):
             deployment_region=deployment_region,  # Modify when x-region is enabled
         )
 
+        build_app_path: str = f"{BASE_DIR}/seed_code/build_app"
         build_app_repository = codecommit.Repository(
             self,
             "BuildRepo",
             repository_name=f"{project_name}-{construct_id}-build",
             code=codecommit.Code.from_zip_file(
-                ZipUtility.create_zip(f"{BASE_DIR}/seed_code/build_app"),
+                ZipUtility.create_zip(build_app_path),
                 branch="main",
             ),
         )
@@ -167,6 +170,10 @@ class MLOpsStack(sc.ProductStack):
                 branch="main",
             ),
         )
+
+        seed_code_helper: SeedCodeHelper = SeedCodeHelper()
+        has_docker_artifacts: bool = seed_code_helper.has_docker_artifacts(build_app_path)
+        has_initial_modal_approval: bool = seed_code_helper.has_initial_modal_approval(build_app_path)
 
         Tags.of(deploy_app_repository).add(key="sagemaker:project-id", value=project_id)
         Tags.of(deploy_app_repository).add(
@@ -316,50 +323,55 @@ class MLOpsStack(sc.ProductStack):
             ],
         )
 
-        # create ECR repository
-        ml_models_ecr_repo = ecr.Repository(
-            self,
-            "MLModelsECRRepository",
-            image_scan_on_push=True,
-            image_tag_mutability=ecr.TagMutability.MUTABLE,
-            repository_name=f"{project_name}",
-        )
-
-        # add cross account resource policies
-        ml_models_ecr_repo.add_to_resource_policy(
-            iam.PolicyStatement(
-                actions=[
-                    "ecr:BatchCheckLayerAvailability",
-                    "ecr:BatchGetImage",
-                    "ecr:CompleteLayerUpload",
-                    "ecr:GetDownloadUrlForLayer",
-                    "ecr:InitiateLayerUpload",
-                    "ecr:PutImage",
-                    "ecr:UploadLayerPart",
-                ],
-                principals=[
-                    iam.ArnPrincipal(f"arn:aws:iam::{Aws.ACCOUNT_ID}:root"),
-                ],
+        ml_models_ecr_repo_name: Optional[str] = None
+        ml_models_ecr_repo_arn: Optional[Any] = None
+        if has_docker_artifacts:
+            # create ECR repository
+            ml_models_ecr_repo = ecr.Repository(
+                self,
+                "MLModelsECRRepository",
+                image_scan_on_push=True,
+                image_tag_mutability=ecr.TagMutability.MUTABLE,
+                repository_name=f"{project_name}",
             )
-        )
 
-        ml_models_ecr_repo.add_to_resource_policy(
-            iam.PolicyStatement(
-                actions=[
-                    "ecr:BatchCheckLayerAvailability",
-                    "ecr:BatchGetImage",
-                    "ecr:GetDownloadUrlForLayer",
-                ],
-                principals=[
-                    iam.ArnPrincipal(f"arn:aws:iam::{preprod_account}:root"),
-                    iam.ArnPrincipal(f"arn:aws:iam::{prod_account}:root"),
-                ],
+            # add cross account resource policies
+            ml_models_ecr_repo.add_to_resource_policy(
+                iam.PolicyStatement(
+                    actions=[
+                        "ecr:BatchCheckLayerAvailability",
+                        "ecr:BatchGetImage",
+                        "ecr:CompleteLayerUpload",
+                        "ecr:GetDownloadUrlForLayer",
+                        "ecr:InitiateLayerUpload",
+                        "ecr:PutImage",
+                        "ecr:UploadLayerPart",
+                    ],
+                    principals=[
+                        iam.ArnPrincipal(f"arn:aws:iam::{Aws.ACCOUNT_ID}:root"),
+                    ],
+                )
             )
-        )
+
+            ml_models_ecr_repo.add_to_resource_policy(
+                iam.PolicyStatement(
+                    actions=[
+                        "ecr:BatchCheckLayerAvailability",
+                        "ecr:BatchGetImage",
+                        "ecr:GetDownloadUrlForLayer",
+                    ],
+                    principals=[
+                        iam.ArnPrincipal(f"arn:aws:iam::{preprod_account}:root"),
+                        iam.ArnPrincipal(f"arn:aws:iam::{prod_account}:root"),
+                    ],
+                )
+            )
+            ml_models_ecr_repo_name = ml_models_ecr_repo.repository_name
+            ml_models_ecr_repo_arn = ml_models_ecr_repo.repository_arn
 
         kms_key = kms.Key(
             self,
-            "BYOCPipelineBucketKMSKey",
+            "PipelineBucketKMSKey",
             description="key used for encryption of data in Amazon S3",
             enable_key_rotation=True,
             policy=iam.PolicyDocument(
@@ -393,7 +405,7 @@ class MLOpsStack(sc.ProductStack):
             model_package_group_name=model_package_group_name,
             repository=build_app_repository,
             s3_artifact=s3_artifact,
-            ecr_repository_name=ml_models_ecr_repo.repository_name,
+            ecr_repository_name=ml_models_ecr_repo_name,
         )
 
         DeployPipelineConstruct(
@@ -407,7 +419,7 @@ class MLOpsStack(sc.ProductStack):
             s3_artifact=s3_artifact,
             preprod_account=preprod_account,
             prod_account=prod_account,
-            ecr_repo_arn=ml_models_ecr_repo.repository_arn,
+            ecr_repo_arn=ml_models_ecr_repo_arn,
             deployment_region=deployment_region,
-            create_model_event_rule=True,
+            create_model_event_rule=has_initial_modal_approval is False,
         )
