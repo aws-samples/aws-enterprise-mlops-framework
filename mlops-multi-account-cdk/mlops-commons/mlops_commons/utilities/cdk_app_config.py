@@ -17,7 +17,7 @@
 
 import os
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 
 from dataclasses_json import DataClassJsonMixin
 from yamldataclassconfig.config import YamlDataClassConfig
@@ -56,7 +56,7 @@ class DeploymentStage(DataClassJsonMixin):
 class DeploymentConfig(DataClassJsonMixin):
     set_name: str
     enabled: bool = field(default=True)
-    default_region: str = field(default=os.getenv('CDK_DEFAULT_REGION'))
+    default_region: Optional[str] = field(default=os.getenv('CDK_DEFAULT_REGION'))
     stages: List[DeploymentStage] = field(default=None)
 
     def get_deployment_stages(self) -> List[DeploymentStage]:

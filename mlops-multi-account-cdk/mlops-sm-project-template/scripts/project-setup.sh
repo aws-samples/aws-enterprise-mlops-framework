@@ -8,5 +8,7 @@ if [[ ! -d "$MLOPS_COMMONS_SCRIPTS_PATH" ]]; then
   MLOPS_COMMONS_SCRIPTS_PATH="$SCRIPT_PATH"/..
 fi
 
-# preparing account for cdk application
-"$MLOPS_COMMONS_SCRIPTS_PATH"/mlops_commons/scripts/setup.sh "$SCRIPT_PATH/../"
+start_project_setup() {
+  # preparing account for cdk application
+  "$MLOPS_COMMONS_SCRIPTS_PATH"/mlops_commons/scripts/setup.sh "$SCRIPT_PATH/../"
+}

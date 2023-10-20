@@ -22,8 +22,8 @@ from logging import Logger
 
 class LogHelper:
     logging.basicConfig(
-        level=logging.getLevelName(str(sys.argv[1]))
-        if len(sys.argv) > 1 else logging.getLevelName(os.getenv('LOG_LEVEL', 'WARNING'))
+        level=logging.getLevelName(str(sys.argv[1]).split('_')[-1])
+        if len(sys.argv) > 1 and 'LOG_LEVEL' in str(sys.argv[1]) else logging.getLevelName(os.getenv('LOG_LEVEL', 'WARNING'))
     )
 
     @staticmethod

@@ -18,15 +18,16 @@
 
 import logging
 import os
+import sys
 from logging import Logger
 from pathlib import Path
 from typing import Optional
 
-from .cdk_app_config import (
+from mlops_commons.utilities.cdk_app_config import (
     AppConfig,
     CdkAppConfig
 )
-from .log_helper import LogHelper
+from mlops_commons.utilities.log_helper import LogHelper
 
 
 class ConfigHelper(object):
@@ -69,3 +70,11 @@ class ConfigHelper(object):
     @staticmethod
     def get_config() -> CdkAppConfig:
         return ConfigHelper().app_config.cdk_app_config
+
+
+# used for shell script to get attribute value
+if __name__ == '__main__':
+    os.environ['CDK_DEFAULT_REGION'] = 'dummy_region'
+    os.environ['CDK_DEFAULT_ACCOUNT'] = 'dummy_account'
+    if 'get_governance_profile' in sys.argv:
+        print(ConfigHelper.get_config().pipeline.get_bootstrap().aws_profile)

@@ -1,5 +1,5 @@
 {
-  "app": "python3 app.py WARN",
+  "app": "python3 app.py LOG_LEVEL_WARN",
   "watch": {
     "include": [
       "**"
