@@ -19,7 +19,7 @@ import boto3
 import os
 
 ssm_client = boto3.client("ssm")
-
+INFRA_SET_NAME = os.getenv("INFRA_SET_NAME", "")
 PROJECT_NAME = os.getenv("PROJECT_NAME", "")
 PROJECT_ID = os.getenv("PROJECT_ID", "")
 MODEL_PACKAGE_GROUP_NAME = os.getenv("MODEL_PACKAGE_GROUP_NAME", "")

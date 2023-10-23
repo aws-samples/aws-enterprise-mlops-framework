@@ -15,7 +15,12 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import importlib
+import logging
+from logging import Logger
+
+from datetime import datetime, timezone
+
+import constructs
 from aws_cdk import (
     Aws,
     CfnParameter,
@@ -26,11 +31,9 @@ from aws_cdk import (
     aws_sagemaker as sagemaker,
 )
 
-import constructs
-
 from .get_approved_package import get_approved_package
-
-from config.constants import (
+from cdk_utilities.cdk_deploy_app_config import ProductionVariantConfig
+from cdk_utilities.constants import (
     PROJECT_NAME,
     PROJECT_ID,
     MODEL_PACKAGE_GROUP_NAME,
@@ -39,65 +42,31 @@ from config.constants import (
     MODEL_BUCKET_ARN,
 )
 
-from datetime import datetime, timezone
-from dataclasses import dataclass
-from pathlib import Path
-from yamldataclassconfig import create_file_path_field
-from config.config_mux import StageYamlDataClassConfig
-
-
-@dataclass
-class EndpointConfigProductionVariant(StageYamlDataClassConfig):
-    """
-    Endpoint Config Production Variant Dataclass
-    a dataclass to handle mapping yml file configs to python class for endpoint configs
-    """
-
-    initial_instance_count: float = 1
-    initial_variant_weight: float = 1
-    instance_type: str = "ml.m5.2xlarge"
-    variant_name: str = "AllTraffic"
-
-    FILE_PATH: Path = create_file_path_field(
-        "endpoint-config.yml", path_is_absolute=True
-    )
-
-    def get_endpoint_config_production_variant(self, model_name):
-        """
-        Function to handle creation of cdk glue job. It use the class fields for the job parameters.
-
-        Parameters:
-            model_name: name of the sagemaker model resource the sagemaker endpoint would use
-
-        Returns:
-            CfnEndpointConfig: CDK SageMaker CFN Endpoint Config resource
-        """
-
-        production_variant = sagemaker.CfnEndpointConfig.ProductionVariantProperty(
-            initial_instance_count=self.initial_instance_count,
-            initial_variant_weight=self.initial_variant_weight,
-            instance_type=self.instance_type,
-            variant_name=self.variant_name,
-            model_name=model_name,
-        )
-
-        return production_variant
-
 
 class DeployEndpointStack(Stack):
     """
     Deploy Endpoint Stack
     Deploy Endpoint stack which provisions SageMaker Model Endpoint resources.
     """
+    logging.basicConfig(level=logging.INFO)
 
     def __init__(
-        self,
-        scope: constructs,
-        id: str,
-        **kwargs,
+            self,
+            scope: constructs,
+            id: str,
+            product_variant_conf: ProductionVariantConfig,
+            **kwargs,
     ):
-
         super().__init__(scope, id, **kwargs)
+        self.logger: Logger = logging.getLogger(self.__class__.__name__)
+
+        self.logger.info(f'PROJECT_ID : {PROJECT_ID}, PROJECT_NAME : {PROJECT_NAME}, '
+                         f'MODEL_PACKAGE_GROUP_NAME :{MODEL_PACKAGE_GROUP_NAME}, '
+                         f'DEV_ACCOUNT : {DEV_ACCOUNT}, ECR_REPO_ARN : {ECR_REPO_ARN}, '
+                         f'MODEL_BUCKET_ARN : {MODEL_BUCKET_ARN}, '
+                         f'product_variant_conf : {product_variant_conf}')
+
+        self.logger.info('Deploying Endpoint Stack')
 
         Tags.of(self).add("sagemaker:project-id", PROJECT_ID)
         Tags.of(self).add("sagemaker:project-name", PROJECT_NAME)
@@ -120,6 +89,8 @@ class DeployEndpointStack(Stack):
             min_length=1,
             default="/vpc/sg/id",
         ).value_as_string
+
+        self.logger.info(f'app_subnet_ids : {app_subnet_ids}, sg_id : {sg_id}')
 
         # iam role that would be used by the model endpoint to run the inference
         model_execution_policy = iam.ManagedPolicy(
@@ -175,13 +146,16 @@ class DeployEndpointStack(Stack):
             ],
         )
 
-        # setup timestamp to be used to trigger the custom resource update event to retrieve latest approved model and to be used with model and endpoint config resources' names
+        # setup timestamp to be used to trigger the custom resource update event to retrieve latest approved model
+        # and to be used with model and endpoint config resources' names
         now = datetime.now().replace(tzinfo=timezone.utc)
 
         timestamp = now.strftime("%Y%m%d%H%M%S")
 
         # get latest approved model package from the model registry (only from a specific model package group)
         latest_approved_model_package = get_approved_package()
+
+        self.logger.info(f'latest_approved_model_package : {latest_approved_model_package}')
 
         # Sagemaker Model
         model_name = f"{MODEL_PACKAGE_GROUP_NAME}-{timestamp}"
@@ -205,38 +179,42 @@ class DeployEndpointStack(Stack):
         # Sagemaker Endpoint Config
         endpoint_config_name = f"{MODEL_PACKAGE_GROUP_NAME}-ec-{timestamp}"
 
-        endpoint_config_production_variant = EndpointConfigProductionVariant()
-
-        endpoint_config_production_variant.load_for_stack(self)
-
-        # create kms key to be used by the assets bucket
-        kms_key = kms.Key(
-            self,
-            "endpoint-kms-key",
-            description="key used for encryption of data in Amazpn SageMaker Endpoint",
-            enable_key_rotation=True,
-            policy=iam.PolicyDocument(
-                statements=[
-                    iam.PolicyStatement(
-                        actions=["kms:*"],
-                        effect=iam.Effect.ALLOW,
-                        resources=["*"],
-                        principals=[iam.AccountRootPrincipal()],
-                    )
-                ]
-            ),
+        production_variant = sagemaker.CfnEndpointConfig.ProductionVariantProperty(
+            initial_instance_count=product_variant_conf.initial_instance_count,
+            initial_variant_weight=product_variant_conf.initial_variant_weight,
+            instance_type=product_variant_conf.instance_type,
+            variant_name=product_variant_conf.variant_name,
+            model_name=model_name,
         )
+
+        kms_key_id = None
+        # if the instance type is not having nvme ssd, then create a kms key to encrypt the assets bucket
+        if 'd' not in product_variant_conf.instance_type:
+            # create kms key to be used by the assets bucket
+            kms_key = kms.Key(
+                self,
+                "endpoint-kms-key",
+                description="key used for encryption of data in Amazpn SageMaker Endpoint",
+                enable_key_rotation=True,
+                policy=iam.PolicyDocument(
+                    statements=[
+                        iam.PolicyStatement(
+                            actions=["kms:*"],
+                            effect=iam.Effect.ALLOW,
+                            resources=["*"],
+                            principals=[iam.AccountRootPrincipal()],
+                        )
+                    ]
+                ),
+            )
+            kms_key_id = kms_key.key_id
 
         endpoint_config = sagemaker.CfnEndpointConfig(
             self,
             "EndpointConfig",
             endpoint_config_name=endpoint_config_name,
-            kms_key_id=kms_key.key_id,
-            production_variants=[
-                endpoint_config_production_variant.get_endpoint_config_production_variant(
-                    model.model_name
-                )
-            ],
+            kms_key_id=kms_key_id,
+            production_variants=[production_variant],
         )
 
         endpoint_config.add_depends_on(model)

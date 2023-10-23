@@ -18,7 +18,7 @@
 import boto3
 from botocore.exceptions import ClientError
 from logging import Logger
-from config.constants import DEFAULT_DEPLOYMENT_REGION, MODEL_PACKAGE_GROUP_NAME
+from cdk_utilities.constants import DEFAULT_DEPLOYMENT_REGION, MODEL_PACKAGE_GROUP_NAME
 
 """Initialise Logger class"""
 logger = Logger(name="deploy_stack")
