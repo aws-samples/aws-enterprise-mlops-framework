@@ -18,11 +18,11 @@
 
 # !/usr/bin/env python3
 
-import cdk_utilities
 from logging import Logger
+
 import aws_cdk as cdk
 
-from cdk_pipelines.codecommit_stack import CdkPipelineCodeCommitStack
+import cdk_utilities
 from cdk_pipelines.pipeline_stack import CdkPipelineStack
 from mlops_commons.utilities.cdk_app_config import CdkAppConfig
 from mlops_commons.utilities.config_helper import ConfigHelper
@@ -41,8 +41,6 @@ class MLOpsInfraCdkApp:
 
         app = cdk.App()
         cac: CdkAppConfig = ConfigHelper.get_config()
-
-        CdkPipelineCodeCommitStack.get_repo(app, cac.pipeline)
 
         for dc in cac.deployments:
 

@@ -37,7 +37,7 @@ from mlops_commons.utilities.zip_utils import ZipUtility
 class CdkPipelineCodeCommitStack(Stack):
     INSTANCE = None
 
-    def __init__(self, scope: Construct, construct_id: str, conf: CodeCommitConfig, **kwargs):
+    def __init__(self, scope: Construct, construct_id: str, set_name: str, conf: CodeCommitConfig, **kwargs):
         super().__init__(scope, construct_id, **kwargs)
 
         source_code_dirs: List[str] = list()
@@ -49,7 +49,7 @@ class CdkPipelineCodeCommitStack(Stack):
         self.repo = codecommit.Repository(
             self,
             "MLOpsInfraPipelineCodeRepo",
-            repository_name=conf.repo_name,
+            repository_name=f'{conf.repo_name}_{set_name}',
             description="CDK Code with MLOps Infra project",
             code=codecommit.Code.from_zip_file(file_path=ZipUtility.create_zip(
                 source_code_dirs),
@@ -57,20 +57,15 @@ class CdkPipelineCodeCommitStack(Stack):
             )
         )
 
-    def __new__(cls, scope: Construct, construct_id: str, conf: CodeCommitConfig, **kwargs):
-        if cls.INSTANCE is None:
-            cls.INSTANCE = super().__new__(cls)
-        return cls.INSTANCE
-
     @classmethod
-    def get_repo(cls, scope, pipeline_conf: PipelineConfig) -> codecommit.Repository:
-        if not cls.INSTANCE:
-            cls.INSTANCE = CdkPipelineCodeCommitStack(
+    def get_repo(cls, scope, set_name: str, pipeline_conf: PipelineConfig) -> codecommit.Repository:
+
+        return CdkPipelineCodeCommitStack(
                 scope,
-                'ml-infra-cc-repo',
+                f'ml-infra-cc-repo-{set_name}',
+                set_name=set_name,
                 conf=pipeline_conf.code_commit.infra,
                 description='CDK stack for creating MLOps Infra pipeline codecommit repository',
                 env=cdk.Environment(account=str(pipeline_conf.account), region=pipeline_conf.region)
-            )
-        return cls.INSTANCE.repo
+            ).repo
 

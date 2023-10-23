@@ -33,6 +33,7 @@ from aws_cdk import (
 )
 from constructs import Construct
 
+from cdk_pipelines.codecommit_stack import CdkPipelineCodeCommitStack
 from cdk_utilities.cdk_infra_app_config import InfraAppConfig
 from mlops_commons.utilities.cdk_app_config import (
     DeploymentStage,
@@ -86,8 +87,11 @@ class CdkPipelineStack(Stack):
         self.logger: Logger = LogHelper.get_logger(self)
 
         code_commit_conf: CodeCommitConfig = pipeline_conf.code_commit.infra
-        repo: codecommit.IRepository = codecommit.Repository.from_repository_name(
-            self, "ProjectTemplateRepo", repository_name=code_commit_conf.repo_name
+
+        repo: codecommit.IRepository = CdkPipelineCodeCommitStack.get_repo(
+            scope,
+            set_name=set_name,
+            pipeline_conf=pipeline_conf
         )
 
         artifact_bucket = self.create_pipeline_artifact_bucket(app_prefix=app_prefix, set_name=set_name)
