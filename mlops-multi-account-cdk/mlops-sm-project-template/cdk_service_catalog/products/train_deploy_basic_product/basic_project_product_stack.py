@@ -175,7 +175,7 @@ class MLOpsStack(sc.ProductStack):
 
         seed_code_helper: SeedCodeHelper = SeedCodeHelper()
         has_docker_artifacts: bool = seed_code_helper.has_docker_artifacts(build_app_path)
-        has_initial_modal_approval: bool = seed_code_helper.has_initial_modal_approval(build_app_path)
+        create_model_event_rule: bool = seed_code_helper.has_initial_modal_approval(build_app_path) is False
 
         Tags.of(deploy_app_repository).add(key="sagemaker:project-id", value=project_id)
         Tags.of(deploy_app_repository).add(
@@ -423,5 +423,5 @@ class MLOpsStack(sc.ProductStack):
             prod_account=prod_account,
             ecr_repo_arn=ml_models_ecr_repo_arn,
             deployment_region=deployment_region,
-            create_model_event_rule=has_initial_modal_approval is False,
+            create_model_event_rule=create_model_event_rule,
         )

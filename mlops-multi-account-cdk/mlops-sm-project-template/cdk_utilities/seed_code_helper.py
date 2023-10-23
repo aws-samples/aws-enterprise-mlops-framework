@@ -15,8 +15,8 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import logging
 import os
+import re
 from logging import Logger
 from typing import Optional
 
@@ -24,13 +24,12 @@ from mlops_commons.utilities.log_helper import LogHelper
 
 
 class SeedCodeHelper(object):
-    logging.basicConfig(level=logging.INFO)
 
     INSTANCE: 'SeedCodeHelper' = None
 
     def __init__(self):
-        # if hasattr(self, 'INSTANCE_INITIALIZED'):
-        #     return
+        if hasattr(self, 'INSTANCE_INITIALIZED'):
+            return
         self.logger: Logger = LogHelper.get_logger(self)
         self.INSTANCE_INITIALIZED = True
 
@@ -46,17 +45,9 @@ class SeedCodeHelper(object):
             with open(build_spec_path, 'r', encoding='utf-8') as f:
                 for line in f:
                     if 'ModelApprovalStatus' in line:
-                        return line.split('ModelApprovalStatus')[-1].strip()\
-                            .replace("\\", "")\
-                            .replace(':', '')\
-                            .replace(' ', '')\
-                            .replace('"', '')\
-                            .replace("'", '')\
-                            .replace(',', '') \
-                            .replace("{", '') \
-                            .replace("}", '')\
-                            .lower().strip() \
-                            == 'approved'
+                        value: str = line.split("ModelApprovalStatus")[-1].split(",")[0]
+                        value = re.sub('[{}:"\\\\]', '', value).lower().strip()
+                        return value == 'approved'
         return False
 
     def has_docker_artifacts(self, build_app_path: str) -> bool:
@@ -68,5 +59,5 @@ class SeedCodeHelper(object):
             with open(build_spec_path, 'r', encoding='utf-8') as f:
                 for line in f:
                     if 'ecr_repo_uri' in line.lower():
-                        return True
+                        return line.split('ecr_repo_uri')[-1].replace('\\', '').replace('"', '').strip().startswith(':')
         return False

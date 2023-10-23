@@ -8,9 +8,6 @@ nodejs_home_path=~/aws_cdk_mlops/nodejs
 export PATH=$miniconda_home_path/bin:$PATH
 export PATH=$nodejs_home_path/node-$node_version/bin:$PATH
 
-#SCRIPT=$(readlink -f "$0")
-#SCRIPT_PATH=$(dirname "$SCRIPT")
-
 get_os_type(){
     case "$OSTYPE" in
       darwin*)  echo "MacOSX" ;;
@@ -20,6 +17,17 @@ get_os_type(){
       cygwin*)  echo "Linux" ;; # windows
       msys*)    echo "Linux" ;; # windows
       *)        echo "$OSTYPE" ;;
+    esac
+}
+
+get_os_name(){
+  os_name=$(grep -i -E "^name" /etc/os-release)
+    case "$os_name" in
+      *Ubuntu*) echo "Ubuntu" ;;
+      *Red*Hat*) echo "RedHat" ;;
+      *Fedora*) echo "Fedora" ;;
+      *CentOS*) echo "CentOS" ;;
+      *)  echo "" ;;
     esac
 }
 
@@ -116,7 +124,7 @@ install_nodejs(){
     path_to_add="$nodejs_home_path/node-$node_version/bin"
 
     if [[ -f ~/.bashrc ]]; then
-      if [[ -z $(grep "export PATH=$path_to_add:" ~/.bash_profile) ]]; then
+      if [[ -z $(grep "export PATH=$path_to_add:" ~/.bashrc) ]]; then
         echo export PATH=$path_to_add:$PATH >> ~/.bashrc
       fi
       source ~/.bashrc
@@ -173,10 +181,35 @@ install_docker(){
     brew install --cask docker
   else
     echo "install docker for linux"
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    bash ./get-docker.sh
+  fi
+}
+
+install_linux_packages(){
+  os_type=$(get_os_type)
+  if  [[ "$os_type" == "Linux" ]]; then
+    os_name=$(get_os_name)
+    # echo "installing linux packages for $os_name"
+    if [[ "$os_name" == "Ubuntu" ]]; then
+      [[ -z "$(which curl 2>&1 |  grep -i -E curl)" ]] && apt-get update -y && apt-get upgrade -y && apt-get install -y curl
+      [[ -z "$(dpkg --info gcc 2>&1 |  grep -i -E ^Name)" ]] && apt-get install -y gcc
+      [[ -z "$(dpkg --info python3-dev 2>&1 |  grep -i -E ^Name)" ]] && apt-get install -y python3-dev
+    elif [[ "$os_name" == "RedHat" ]] || [[ "$os_name" == "Fedora" ]] || [[ "$os_name" == "CentOS" ]]; then
+      yum install -y which
+      [[ -z "$(which curl 2>&1 |  grep -i -E curl)" ]] && yum update -y && yum upgrade -y && yum install -y curl
+      [[ -z "$(yum list installed gcc 2>&1 |  grep -i -E ^gcc)" ]] && yum install -y gcc
+      [[ -z "$(yum list installed python3-devel 2>&1 |  grep -i -E ^python3-devel)" ]] && yum install -y python3-devel
+    else
+      echo "not supported os : $os_name"
+    fi
   fi
 }
 
 install_prerequisites(){
+
+  # install dev packages for if os is linux
+  install_linux_packages
 
   # install miniconda to manage python packages
   [[ -z "$(which conda | grep /conda)" ]] && install_miniconda

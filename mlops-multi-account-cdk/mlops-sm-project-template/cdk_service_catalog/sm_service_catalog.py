@@ -48,13 +48,15 @@ class SageMakerServiceCatalog(Stack):
             default="/mlops/role/lead",
         ).value_as_string
 
-        default_file_assets_bucket_name: str = (f'cdk-{aws_cdk.DefaultStackSynthesizer.DEFAULT_QUALIFIER}'
-                                                f'-assets-{aws_cdk.Aws.ACCOUNT_ID}-{aws_cdk.Aws.REGION}')
-
-        sc_product_artifact_bucket = s3.Bucket.from_bucket_name(
-            scope=self,
-            id='DEFAULT_FILE_ASSETS_BUCKET',
-            bucket_name=default_file_assets_bucket_name,
+        sc_product_artifact_bucket = s3.Bucket(
+            self,
+            'MLOpsProductAssetsBucket',
+            bucket_name=f"mlops-sc-product-assets-{kwargs.get('env')['account']}-{kwargs.get('env')['region']}",
+            # Bucket name has a limit of 63 characters
+            encryption=s3.BucketEncryption.S3_MANAGED,
+            versioned=True,
+            auto_delete_objects=True,
+            removal_policy=aws_cdk.RemovalPolicy.DESTROY,
         )
 
         # Service Catalog Portfolio
@@ -92,17 +94,20 @@ class SageMakerServiceCatalog(Stack):
             **kwargs,
     ):
         templates_path = Path(templates_directory)
-        [
+        for file in filter(lambda x: 'seed_code' not in x.parts
+                                     and 'constructs' not in x.parts
+                                     and '__init__' != x.stem
+                                     and 'class MLOpsStack' in open(x).read(),
+                           templates_path.glob("*/*.py")):
+
             SageMakerServiceCatalogProduct(
                 self,
-                file.stem.replace("_product_stack", ""),
+                construct_id=f'{file.parts[-2]}_{file.stem}',
                 portfolio=portfolio,
                 template_py_file=file,
                 launch_role=launch_role,
                 **kwargs,
             )
-            for file in templates_path.glob("**/*_product_stack.py")
-        ]
 
     def create_launch_role(self) -> iam.Role:
         # Create the launch role
