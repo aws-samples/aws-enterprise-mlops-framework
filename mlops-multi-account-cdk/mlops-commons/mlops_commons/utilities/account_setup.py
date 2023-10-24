@@ -146,7 +146,7 @@ class AccountSetup:
             sys.exit(-1)
         self.logger.info('Finished bootstrapping of governance account')
 
-    def run(self, cmd: str, account: int, region: str) -> bool:
+    def run(self, cmd: str, account: str, region: str) -> bool:
         print(os.linesep)
         self.logger.info(f'command : {cmd}')
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, text=True)

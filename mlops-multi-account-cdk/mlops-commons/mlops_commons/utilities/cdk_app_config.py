@@ -34,7 +34,7 @@ class BootstrapConfig(DataClassJsonMixin):
 @dataclass
 class DeploymentStage(DataClassJsonMixin):
     stage_name: str
-    account: int
+    account: str
     enabled: bool = field(default=True)
     region: str = field(default='')
     bootstrap: BootstrapConfig = field(default_factory=BootstrapConfig)
@@ -91,7 +91,7 @@ class CodeCommitRepo(DataClassJsonMixin):
 
 @dataclass
 class PipelineConfig(DataClassJsonMixin):
-    account: int = field(default=os.getenv('CDK_DEFAULT_ACCOUNT'))
+    account: str = field(default=os.getenv('CDK_DEFAULT_ACCOUNT'))
     region: str = field(default=os.getenv('CDK_DEFAULT_REGION'))
     code_commit: CodeCommitRepo = field(default_factory=CodeCommitRepo)
     bootstrap: BootstrapConfig = field(default_factory=BootstrapConfig)
