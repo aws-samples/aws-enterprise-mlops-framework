@@ -35,7 +35,6 @@ from mlops_commons.utilities.zip_utils import ZipUtility
 
 
 class CdkPipelineCodeCommitStack(Stack):
-    INSTANCE = None
 
     def __init__(self, scope: Construct, construct_id: str, set_name: str, conf: CodeCommitConfig, **kwargs):
         super().__init__(scope, construct_id, **kwargs)

@@ -18,7 +18,6 @@ import os
 from logging import Logger
 from typing import List
 
-import aws_cdk
 import aws_cdk as cdk
 from aws_cdk import (
 
@@ -138,7 +137,7 @@ class CdkPipelineStack(Stack):
                     set_name=set_name,
                     stage_name=stage.stage_name,
                     app_prefix=app_prefix,
-                    env=aws_cdk.Environment(account=str(stage.account), region=stage.region),
+                    env=cdk.Environment(account=str(stage.account), region=stage.region),
                     deploy_sm_domain=str(stage.stage_name).lower().strip().startswith('dev')
                 )
             )
@@ -187,11 +186,11 @@ class CdkPipelineStack(Stack):
         s3_artifact = s3.Bucket(
             self,
             "MLOpsSmTemplatePipelineArtifactBucket",
-            bucket_name=f"{app_prefix}-infra-pipeline-bucket-{set_name}",
+            bucket_name=f"{app_prefix}-infra-pipeline-{cdk.Aws.ACCOUNT_ID}-{set_name}",
             encryption_key=kms_key,
             versioned=True,
             auto_delete_objects=True,
-            removal_policy=aws_cdk.RemovalPolicy.DESTROY,
+            removal_policy=cdk.RemovalPolicy.DESTROY,
         )
 
         # Block insecure requests to the bucket
