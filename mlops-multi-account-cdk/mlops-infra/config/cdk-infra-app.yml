@@ -29,40 +29,42 @@ cdk_infra_app_config:
       vpc_add_kms_endpoint: True
       vpc_add_ecr_endpoint: True
       vpc_add_ecr_docker_endpoint: True
-    deployments:
-      - set_name: first-example
-        stages:
-          - stage_name: dev
-            create_network:
-              vpc_cidr: "20.0.0.0/16"
-              vpc_max_azs: 3
-            import_network:
-              vpc_id: "vpc-xxxxxxxxxxx"
-              subnets:
-                - "subnet-xxxxxxxxxxx"
-                - "subnet-xxxxxxxxxxx"
-                - "subnet-xxxxxxxxxxx"
-              base_security_group: "sg-xxxxxxxxxxxxx"
-          - stage_name: preprod
-            create_network:
-              vpc_cidr: "30.0.0.0/16"
-            import_network:
-              vpc_id: "vpc-xxxxxxxxxxxxxxx"
-              subnets:
-                - "subnet-xxxxxxxxxxxxxxxx"
-                - "subnet-xxxxxxxxxxxxxxxx"
-                - "subnet-xxxxxxxxxxxxxxxx"
-              base_security_group: "sg-xxxxxxxxxxxxxx"
-          - stage_name: prod
-            create_network:
-              vpc_cidr: "40.0.0.0/16"
-            import_network:
-              vpc_id: "vpc-xxxxxxxxxxxxxxxxxx"
-              subnets:
-                - "subnet-xxxxxxxxxxxxxxxxxxx"
-                - "subnet-xxxxxxxxxxxxxxxxxxx"
-                - "subnet-xxxxxxxxxxxxxxxxxxx"
-              base_security_group: "sg-xxxxxxxxxxxxx"
+#    deployments:
+#      - set_name: first-example
+#        stages:
+#          - stage_name: dev
+#            create_network:
+#              vpc_cidr: "20.0.0.0/16"
+#              vpc_max_azs: 3
+#            import_network:
+#              vpc_id: "vpc-098f90df40786f072"
+#              subnets:
+#                - "subnet-00245557b38b551bb"
+#                - "subnet-0c1919630364dff76"
+#                - "subnet-0807aaa5c908ed9f0"
+#              base_security_group: "sg-042cb02594e6c9afe"
+#          - stage_name: preprod
+#            create_network:
+#              vpc_cidr: "30.0.0.0/16"
+##            import_network:
+##              vpc_id: "vpc-098f90df40786f072"
+##              #vpc_cidr: "10.0.0.0/16"
+##              subnets:
+##                - "subnet-00245557b38b551bb"
+##                - "subnet-0c1919630364dff76"
+##                - "subnet-0807aaa5c908ed9f0"
+##              base_security_group: "sg-042cb02594e6c9afe"
+#          - stage_name: prod
+#            create_network:
+#              vpc_cidr: "40.0.0.0/16"
+##            import_network:
+##              vpc_id: "vpc-098f90df40786f072"
+##              #vpc_cidr: "10.0.0.0/16"
+##              subnets:
+##                - "subnet-00245557b38b551bb"
+##                - "subnet-0c1919630364dff76"
+##                - "subnet-0807aaa5c908ed9f0"
+##              base_security_group: "sg-042cb02594e6c9afe"
 
   sagemaker:
     profiles:
