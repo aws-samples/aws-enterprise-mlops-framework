@@ -40,6 +40,7 @@ from mlops_commons.utilities.cdk_app_config import (
 )
 from mlops_commons.utilities.log_helper import LogHelper
 from cdk_sm_infra.sm_infra_stack import SagemakerInfraStack
+from mlops_commons.utilities.s3_utils import S3Utils
 
 
 class SagemakerInfraStage(Stage):
@@ -93,7 +94,12 @@ class CdkPipelineStack(Stack):
             pipeline_conf=pipeline_conf
         )
 
-        artifact_bucket = self.create_pipeline_artifact_bucket(app_prefix=app_prefix, set_name=set_name)
+        artifact_bucket = self.create_pipeline_artifact_bucket(
+            app_prefix=app_prefix,
+            set_name=set_name,
+            account=kwargs.get('env').account,
+            region=kwargs.get('env').region
+        )
 
         pipeline = pipelines.CodePipeline(
             self,
@@ -145,7 +151,7 @@ class CdkPipelineStack(Stack):
         # General tags applied to all resources created on this scope (self)
         Tags.of(self).add("cdk-app", f"{app_prefix}-infra")
 
-    def create_pipeline_artifact_bucket(self, app_prefix: str, set_name: str) -> s3.Bucket:
+    def create_pipeline_artifact_bucket(self, app_prefix: str, set_name: str, account: str, region: str) -> s3.Bucket:
         # create kms key to be used by the assets bucket
         kms_key = kms.Key(
             self,
@@ -183,10 +189,19 @@ class CdkPipelineStack(Stack):
             )
         )
 
+        bucket_name: str = S3Utils.create_bucket_name(
+            prefix=app_prefix,
+            name_part1='infra-pipeline',
+            name_part2=set_name,
+            suffix_part1=account,
+            suffix_part2=region,
+            convert_region_to_short_code=True
+        )
+        self.logger.info(f'Creating pipeline artifact bucket : {bucket_name}')
         s3_artifact = s3.Bucket(
             self,
             "MLOpsSmTemplatePipelineArtifactBucket",
-            bucket_name=f"{app_prefix}-infra-pipeline-{cdk.Aws.ACCOUNT_ID}-{set_name}",
+            bucket_name=bucket_name,
             encryption_key=kms_key,
             versioned=True,
             auto_delete_objects=True,

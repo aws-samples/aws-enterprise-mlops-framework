@@ -58,7 +58,7 @@ class MLOpsInfraCdkApp:
                 f"ml-infra-deploy-pipeline-{dc.set_name}",
                 app_prefix=cac.app_prefix,
                 set_name=dc.set_name,
-                deploy_stages_conf=dc.get_deployment_stages(),
+                deploy_stages_conf=dc.stages,
                 pipeline_conf=cac.pipeline,
                 description="CI/CD CDK Pipelines for MLOps Infra",
                 env=cdk.Environment(account=str(cac.pipeline.account), region=cac.pipeline.region)
