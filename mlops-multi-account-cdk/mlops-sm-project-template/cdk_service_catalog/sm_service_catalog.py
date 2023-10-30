@@ -18,6 +18,7 @@
 
 import os
 from importlib import import_module
+from logging import Logger
 from pathlib import Path
 import datetime
 import aws_cdk
@@ -29,15 +30,28 @@ from aws_cdk import CfnParameter
 from aws_cdk import aws_servicecatalog as servicecatalog
 from constructs import Construct
 
+from mlops_commons.macros.string_macro import StringMacro
+from mlops_commons.utilities.log_helper import LogHelper
+from mlops_commons.utilities.s3_utils import S3Utils
+
 
 class SageMakerServiceCatalog(Stack):
     def __init__(
             self,
             scope: Construct,
             construct_id: str,
+            app_prefix: str,
             **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
+
+        self.logger: Logger = LogHelper.get_logger(self)
+
+        # Note - macro name must be unique on account level. String macro is being used in
+        # use-case product stack to lower case the project name which is being used as a
+        # part for creating s3 bucket name
+        string_macro: StringMacro = StringMacro(self, construct_id=f"{app_prefix}-string-macro", app_prefix=app_prefix)
+        string_macro.create(macro_name=f"{app_prefix.capitalize()}StringFn")
 
         execution_role_arn = CfnParameter(
             self,
@@ -48,11 +62,20 @@ class SageMakerServiceCatalog(Stack):
             default="/mlops/role/lead",
         ).value_as_string
 
+        bucket_name: str = S3Utils.create_bucket_name(
+            prefix=app_prefix,
+            name_part1='sc-product',
+            name_part2='assets',
+            suffix_part1=kwargs.get('env')['account'],
+            suffix_part2=kwargs.get('env')['region'],
+            convert_region_to_short_code=True
+        )
+        self.logger.info(f'Creating sc-product-assets artifact bucket : {bucket_name}')
+
         sc_product_artifact_bucket = s3.Bucket(
             self,
             'MLOpsProductAssetsBucket',
-            bucket_name=f"mlops-sc-product-assets-{kwargs.get('env')['account']}-{kwargs.get('env')['region']}",
-            # Bucket name has a limit of 63 characters
+            bucket_name=bucket_name,
             encryption=s3.BucketEncryption.S3_MANAGED,
             versioned=True,
             auto_delete_objects=True,
@@ -68,9 +91,6 @@ class SageMakerServiceCatalog(Stack):
             description="Products for SM Projects",
         )
 
-        # launch_role = iam.Role.from_role_name(
-        #     self, "LaunchRole", "AmazonSageMakerServiceCatalogProductsLaunchRole"
-        # )
         execute_role = iam.Role.from_role_arn(self,
                                               'PortfolioExecutionRoleArn',
                                               execution_role_arn,
@@ -81,6 +101,7 @@ class SageMakerServiceCatalog(Stack):
 
         # Adding sagemaker projects products
         self.add_all_products(
+            app_prefix=app_prefix,
             portfolio=portfolio,
             launch_role=launch_role,
             sc_product_artifact_bucket=sc_product_artifact_bucket,
@@ -88,10 +109,11 @@ class SageMakerServiceCatalog(Stack):
 
     def add_all_products(
             self,
+            app_prefix: str,
             portfolio: servicecatalog.Portfolio,
             launch_role: iam.Role,
-            templates_directory: str = "cdk_service_catalog/products",
-            **kwargs,
+            sc_product_artifact_bucket: s3.Bucket,
+            templates_directory: str = "cdk_service_catalog/products"
     ):
         templates_path = Path(templates_directory)
         for file in filter(lambda x: 'seed_code' not in x.parts
@@ -99,14 +121,15 @@ class SageMakerServiceCatalog(Stack):
                                      and '__init__' != x.stem
                                      and 'class MLOpsStack' in open(x).read(),
                            templates_path.glob("*/*.py")):
-
             SageMakerServiceCatalogProduct(
                 self,
                 construct_id=f'{file.parts[-2]}_{file.stem}',
+                app_prefix=app_prefix,
                 portfolio=portfolio,
                 template_py_file=file,
                 launch_role=launch_role,
-                **kwargs,
+                sc_product_artifact_bucket=sc_product_artifact_bucket
+
             )
 
     def create_launch_role(self) -> iam.Role:
@@ -179,6 +202,20 @@ class SageMakerServiceCatalog(Stack):
         products_launch_role.add_to_policy(
             iam.PolicyStatement(
                 actions=[
+                    "cloudformation:CreateChangeSet",
+                    "cloudformation:DescribeChangeSet",
+                    "cloudformation:ExecuteChangeSet",
+                    "cloudformation:ListChangeSets"
+
+                ],
+                effect=iam.Effect.ALLOW,
+                resources=["*"],
+            ),
+        )
+
+        products_launch_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=[
                     "kms:Create*",
                     "kms:Describe*",
                     "kms:Enable*",
@@ -227,6 +264,7 @@ class SageMakerServiceCatalogProduct(cdk.NestedStack):
             self,
             scope: Construct,
             construct_id: str,
+            app_prefix: str,
             portfolio: servicecatalog.Portfolio,
             template_py_file: Path,
             launch_role: iam.Role,
@@ -236,15 +274,18 @@ class SageMakerServiceCatalogProduct(cdk.NestedStack):
         super().__init__(scope, construct_id, **kwargs)
 
         module_name: str = template_py_file.stem
-        short_name = module_name.replace("_product_stack", "")
+        short_name = f'{template_py_file.parts[-2]}-{module_name.replace("_product_stack", "")}'
+
         module_path: str = (
             (template_py_file.parent / module_name).as_posix().replace(os.path.sep, ".")
         )
         template_module = import_module(module_path)
+
         try:
             description = template_module.MLOpsStack.get_description()
         except AttributeError:
             description = "Products for SageMaker Projects"
+
         try:
             support_email = template_module.MLOpsStack.get_support_email()
         except AttributeError:
@@ -281,6 +322,7 @@ class SageMakerServiceCatalogProduct(cdk.NestedStack):
                         template_module.MLOpsStack(
                             self,
                             "project",
+                            app_prefix=app_prefix,
                             asset_bucket=sc_product_artifact_bucket,
                             **kwargs,
                         )
