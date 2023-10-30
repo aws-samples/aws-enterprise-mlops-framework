@@ -16,6 +16,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 import os
 import typing
+from logging import Logger
 
 import aws_cdk as cdk
 from aws_cdk import Aws, CfnCapabilities
@@ -29,6 +30,10 @@ from aws_cdk import aws_iam as iam
 from aws_cdk import aws_s3 as s3
 from constructs import Construct
 from typing import Optional
+
+from cdk_utilities.yaml_helper import YamlHelper
+
+from mlops_commons.utilities.log_helper import LogHelper
 
 
 class DeployPipelineConstruct(Construct):
@@ -46,9 +51,13 @@ class DeployPipelineConstruct(Construct):
             prod_account: str,
             deployment_region: str,
             create_model_event_rule: bool,
-            ecr_repo_arn: Optional[str] = None
+            caller_base_dir: Optional[str],
+            ecr_repo_arn: Optional[str] = None,
+
     ) -> None:
         super().__init__(scope, construct_id)
+        self.logger: Logger = LogHelper.get_logger(self)
+        base_dir: str = os.path.abspath(f'{os.path.dirname(__file__)}')
 
         # Define resource names
         pipeline_name = f"{project_name}-{construct_id}"
@@ -65,7 +74,7 @@ class DeployPipelineConstruct(Construct):
 
         cdk_synth_build_role.add_to_policy(
             iam.PolicyStatement(
-                actions=["sagemaker:ListModelPackages"],
+                actions=["sagemaker:ListModelPackages", "sagemaker:DescribeModelPackage"],
                 resources=[
                     f"arn:{Aws.PARTITION}:sagemaker:{Aws.REGION}:{Aws.ACCOUNT_ID}:model-package-group/*",
                     # TODO: Add conditions
@@ -154,6 +163,15 @@ class DeployPipelineConstruct(Construct):
             "MODEL_BUCKET_ARN": codebuild.BuildEnvironmentVariable(value=model_bucket_arn)
         })
 
+        environment_variables.update({
+            "ARTIFACT_BUCKET": codebuild.BuildEnvironmentVariable(value=s3_artifact.bucket_name)
+        })
+        environment_variables.update({
+            "ARTIFACT_BUCKET_KMS_ID": codebuild.BuildEnvironmentVariable(
+                value=s3_artifact.encryption_key.key_id
+            )
+        })
+
         if ecr_repo_arn:
             environment_variables.update({
                 "ECR_REPO_ARN": codebuild.BuildEnvironmentVariable(value=ecr_repo_arn)
@@ -170,6 +188,21 @@ class DeployPipelineConstruct(Construct):
             ),
         )
 
+        mandatory_cfn_nag_ignore_env_name: str = 'mandatory_cfn_nag_ignore'
+        merged_cfn_nag_file_name: str = 'merged_cfn_nag_ignore.yml'
+
+        cfn_nag_ignore_python_fn = self.create_python_fn_cfn_nag_yaml_merge(
+            mandatory_nag_env_name=mandatory_cfn_nag_ignore_env_name,
+            product_specific_cfn_nag_filepath='./cfn_nag_ignore.yml',  # this file will be in Cfn nag codepipeline stage
+            out_file_name=merged_cfn_nag_file_name
+        )
+
+        self.logger.info(f'cfn_nag_ignore_python_fn -> {cfn_nag_ignore_python_fn}')
+
+        cfn_nag_mandatory_yml_b64: str = YamlHelper.encode_file_as_base64_string(
+            f'{base_dir}{os.path.sep}conf{os.path.sep}cfn_nag_ignore.yml'
+        )
+
         # code build to include security scan over cloudformation template
         security_scan = codebuild.Project(
             self,
@@ -182,6 +215,7 @@ class DeployPipelineConstruct(Construct):
                         "variables": {
                             "TemplateFolder": "./*.template.json",
                             "FAIL_BUILD": "true",
+                            f"{mandatory_cfn_nag_ignore_env_name}": f'{cfn_nag_mandatory_yml_b64}'
                         },
                     },
                     "phases": {
@@ -197,23 +231,20 @@ class DeployPipelineConstruct(Construct):
                         "build": {
                             "commands": [
                                 "echo Starting cfn scanning `date` in `pwd`",
-                                "echo 'RulesToSuppress:"
-                                "\n- id: W58\n  reason: W58 is an warning raised due to Lambda functions require "
-                                "permission to write CloudWatch Logs, although the lambda role contains the policy "
-                                "that support these permissions cgn_nag continues to through this problem "
-                                "(https://github.com/stelligent/cfn_nag/issues/422)"
-                                "\n- id: W1200\n  reason: W1200 is an warning raised due to using ec2 instance with "
-                                "nvme ssd ' > cfn_nag_ignore.yml",
-                                # this is temporary solution to an issue with W58 rule with cfn_nag
+                                f"python -c '{cfn_nag_ignore_python_fn}'",
                                 'mkdir report || echo "dir report exists"',
-                                "SCAN_RESULT=$(cfn_nag_scan --fail-on-warnings --deny-list-path cfn_nag_ignore.yml "
+                                'ls -lrt',
+                                f"SCAN_RESULT=$(cfn_nag_scan --fail-on-warnings "
+                                f"--deny-list-path {merged_cfn_nag_file_name} "
                                 "--input-path  ${TemplateFolder} -o json > ./report/cfn_nag.out.json && echo OK || "
                                 "echo FAILED)",
-                                "echo ./report/cfn_nag.out.json",
+                                "cat ./report/cfn_nag.out.json",
                                 "echo Completed cfn scanning `date`",
                                 "echo $SCAN_RESULT",
                                 "echo $FAIL_BUILD",
-                                """if [[ "$FAIL_BUILD" = "true" && "$SCAN_RESULT" = "FAILED" ]]; then printf "\n\nFailiing pipeline as possible insecure configurations were detected\n\n" && exit 1; fi""",
+                                """if [[ "$FAIL_BUILD" = "true" && "$SCAN_RESULT" = "FAILED" ]]; 
+                                then printf "\n\nFailiing pipeline as possible insecure configurations 
+                                were detected\n\n" && exit 1; fi""",
                             ]
                         },
                     },
@@ -358,3 +389,23 @@ class DeployPipelineConstruct(Construct):
                 ),
                 targets=[targets.CodePipeline(deploy_code_pipeline)],
             )
+
+    def create_python_fn_cfn_nag_yaml_merge(self, mandatory_nag_env_name: str,
+                                            product_specific_cfn_nag_filepath: str, out_file_name: str) -> str:
+
+        self.logger.info(f'mandatory_nag_env_name: {mandatory_nag_env_name}, '
+                         f'product_specific_cfn_nag_filepath: {product_specific_cfn_nag_filepath}, '
+                         f'out_file_name: {out_file_name} ')
+
+        cfn_nag_ignore_python_fn: str = f'yaml_file_path="{product_specific_cfn_nag_filepath}";' \
+                                        f'import os;' \
+                                        f'import yaml;' \
+                                        f'from base64 import b64decode;' \
+                                        f'm_yml_str=b64decode(os.getenv("{mandatory_nag_env_name}")).decode("utf-8");' \
+                                        f'm_yml = yaml.safe_load(m_yml_str); ' \
+                                        f'os.path.exists(yaml_file_path) and ' \
+                                        f'[m_yml["RulesToSuppress"].append(e) ' \
+                                        f'for e in yaml.safe_load(open(yaml_file_path, "r"))["RulesToSuppress"]];  ' \
+                                        f'yaml.dump(m_yml, open("{out_file_name}", "w"), ' \
+                                        f'default_flow_style=False)'
+        return cfn_nag_ignore_python_fn
