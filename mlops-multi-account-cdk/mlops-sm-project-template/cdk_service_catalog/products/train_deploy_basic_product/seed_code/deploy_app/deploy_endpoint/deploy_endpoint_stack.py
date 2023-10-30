@@ -176,8 +176,8 @@ class DeployEndpointStack(Stack):
             ),
         )
 
-        # Sagemaker Endpoint Config
-        endpoint_config_name = f"{MODEL_PACKAGE_GROUP_NAME}-ec-{timestamp}"
+        # Sagemaker Endpoint Config, name must be max 63 characters length
+        endpoint_config_name = f"{MODEL_PACKAGE_GROUP_NAME}-ec-{timestamp}"[:63]
 
         production_variant = sagemaker.CfnEndpointConfig.ProductionVariantProperty(
             initial_instance_count=product_variant_conf.initial_instance_count,

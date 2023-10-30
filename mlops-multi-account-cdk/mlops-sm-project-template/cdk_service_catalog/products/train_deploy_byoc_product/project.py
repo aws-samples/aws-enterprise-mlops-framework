@@ -16,6 +16,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import os
+from logging import Logger
 from typing import Optional, Any
 
 import aws_cdk
@@ -30,13 +31,13 @@ from aws_cdk import (
     aws_servicecatalog as sc,
     aws_codecommit as codecommit,
 )
-
+from cdk_utilities.seed_code_helper import SeedCodeHelper
 from constructs import Construct
 
 from cdk_service_catalog.products.constructs.build_pipeline import BuildPipelineConstruct
 from cdk_service_catalog.products.constructs.deploy_pipeline import DeployPipelineConstruct
 from cdk_service_catalog.products.constructs.ssm import SSMConstruct
-from cdk_utilities.seed_code_helper import SeedCodeHelper
+from mlops_commons.utilities.log_helper import LogHelper
 
 from mlops_commons.utilities.zip_utils import ZipUtility
 
@@ -44,11 +45,13 @@ BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
 class MLOpsStack(sc.ProductStack):
+
     DESCRIPTION: str = ("This template includes a model building pipeline that includes a workflow to build "
                         "your own containers, pre-process, train, evaluate and register a model. The deploy pipeline "
                         "creates a dev, preprod and production endpoint. The target DEV/PREPROD/PROD accounts "
                         "are parameterized in this template.")
-    TEMPLATE_NAME: str = "MLOps template for real-time deployment using your own container"
+
+    TEMPLATE_NAME: str = "Build & Deploy MLOps template for real-time deployment using your own container"
 
     TEMPLATE_VERSION: str = 'v1.0'
 
@@ -87,10 +90,13 @@ class MLOpsStack(sc.ProductStack):
             self,
             scope: Construct,
             construct_id: str,
+            app_prefix: str,
             asset_bucket: s3.Bucket = None,
             **kwargs
     ) -> None:
         super().__init__(scope, construct_id, asset_bucket=asset_bucket, **kwargs)
+
+        self.logger: Logger = LogHelper.get_logger(self)
 
         # Define required parameters
         project_name = aws_cdk.CfnParameter(
@@ -218,10 +224,64 @@ class MLOpsStack(sc.ProductStack):
             )
         )
 
+        # lower_project_name_transform_macro = aws_cdk.Fn.transform(
+        #     macro_name=f"{app_prefix.capitalize()}StringFn",
+        #     parameters={'function': 'lower', 'input_str': project_name}
+        # )
+        # runtime_value_mappings = aws_cdk.CfnMapping(
+        #     self,
+        #     "runtime-values",
+        #     mapping={
+        #         "lowercase": {
+        #             'projectname': lower_project_name_transform_macro
+        #         }
+        #     }
+        # )
+        # lower_project_name = runtime_value_mappings.find_in_map('lowercase', 'projectname')
+
+        pipeline_bucket_name_transform_macro = aws_cdk.Fn.transform(
+            macro_name=f"{app_prefix.capitalize()}StringFn",
+            parameters={
+                'function': 'create_bucket_name',
+                'prefix': app_prefix,
+                'name_part1': project_name,
+                'name_part2': 'pipeline',
+                'suffix_part1': Aws.ACCOUNT_ID,
+                'suffix_part2': Aws.REGION,
+                'convert_region_to_short_code': True
+            }
+        )
+        artifact_bucket_name_transform_macro = aws_cdk.Fn.transform(
+            macro_name=f"{app_prefix.capitalize()}StringFn",
+            parameters={
+                'function': 'create_bucket_name',
+                'prefix': app_prefix,
+                'name_part1': project_name,
+                'name_part2': 'artifact',
+                'suffix_part1': Aws.ACCOUNT_ID,
+                'suffix_part2': Aws.REGION,
+                'convert_region_to_short_code': True
+            }
+        )
+
+        runtime_value_mappings = aws_cdk.CfnMapping(
+            self,
+            "runtime-values",
+            mapping={
+                "s3buckets": {
+                    'pipeline': pipeline_bucket_name_transform_macro,
+                    'artifact': artifact_bucket_name_transform_macro
+                }
+            }
+        )
+        artifact_bucket_name = runtime_value_mappings.find_in_map('s3buckets', 'artifact')
+
+        self.logger.info(f'Creating {artifact_bucket_name} artifact bucket')
+
         s3_artifact = s3.Bucket(
             self,
             "S3Artifact",
-            bucket_name=f"mlops-{project_name}-{Aws.ACCOUNT_ID}",  # Bucket name has a limit of 63 characters
+            bucket_name=artifact_bucket_name,  # Bucket name has a limit of 63 characters
             encryption_key=kms_key,
             versioned=True,
             auto_delete_objects=True,
@@ -386,10 +446,13 @@ class MLOpsStack(sc.ProductStack):
             ),
         )
 
+        pipeline_bucket_name = runtime_value_mappings.find_in_map('s3buckets', 'pipeline')
+
+        self.logger.info(f'Creating {pipeline_bucket_name} pipeline bucket')
         pipeline_artifact_bucket = s3.Bucket(
             self,
             "PipelineBucket",
-            bucket_name=f"pipeline-{project_name}-{Aws.ACCOUNT_ID}",  # Bucket name has a limit of 63 characters
+            bucket_name=pipeline_bucket_name,  # Bucket name has a limit of 63 characters
             encryption_key=kms_key,
             versioned=True,
             auto_delete_objects=True,
@@ -422,4 +485,5 @@ class MLOpsStack(sc.ProductStack):
             ecr_repo_arn=ml_models_ecr_repo_arn,
             deployment_region=deployment_region,
             create_model_event_rule=create_model_event_rule,
+            caller_base_dir=BASE_DIR
         )
