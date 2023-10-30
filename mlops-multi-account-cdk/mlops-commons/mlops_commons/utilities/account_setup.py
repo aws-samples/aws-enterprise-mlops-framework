@@ -46,7 +46,7 @@ class AccountSetup:
 
         cdk_app_config: CdkAppConfig = self.config_helper.get_config()
         pipeline_conf: PipelineConfig = cdk_app_config.pipeline
-        pipeline_bootstrap_conf: BootstrapConfig = pipeline_conf.get_bootstrap()
+        pipeline_bootstrap_conf: BootstrapConfig = pipeline_conf.bootstrap
 
         if pipeline_bootstrap_conf.enabled:
             self.bootstrap_governance_account(cdk_app_config=cdk_app_config)
@@ -60,7 +60,7 @@ class AccountSetup:
 
             self.logger.info(f'################## Starting to process set_name : {ds.set_name} ################## ')
 
-            for stage in filter(lambda y: y.enabled, ds.get_deployment_stages()):
+            for stage in filter(lambda y: y.enabled, ds.stages):
 
                 if str(stage.stage_name).strip().lower() == 'dev':
                     dev_account: str = str(stage.account)
@@ -84,7 +84,7 @@ class AccountSetup:
                                 set_name: str,
                                 stage: DeploymentStage):
 
-        stage_bootstrap_conf: BootstrapConfig = stage.get_bootstrap()
+        stage_bootstrap_conf: BootstrapConfig = stage.bootstrap
 
         if stage_bootstrap_conf.enabled:
             execution_policy_arn: str = self.execution_policy.get_policy_arn(
@@ -127,12 +127,12 @@ class AccountSetup:
     def bootstrap_governance_account(self, cdk_app_config: CdkAppConfig):
 
         pipeline_conf: PipelineConfig = cdk_app_config.pipeline
-        pipeline_bootstrap_conf: BootstrapConfig = pipeline_conf.get_bootstrap()
+        pipeline_bootstrap_conf: BootstrapConfig = pipeline_conf.bootstrap
 
         governance_execution_policy_arn: str = self.execution_policy.get_policy_arn(
             app_prefix=cdk_app_config.app_prefix,
             account=str(pipeline_conf.account),
-            conf=pipeline_conf.get_bootstrap()
+            conf=pipeline_conf.bootstrap
         )
         # 'arn:aws:iam::aws:policy/AdministratorAccess'
         self.logger.info(f'Starting to bootstrap '

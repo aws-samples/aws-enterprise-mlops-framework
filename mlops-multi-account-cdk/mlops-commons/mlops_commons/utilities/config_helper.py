@@ -16,8 +16,8 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-import logging
 import os
+import logging
 import sys
 from logging import Logger
 from pathlib import Path
@@ -42,13 +42,10 @@ class ConfigHelper(object):
 
         self.logger: Logger = LogHelper.get_logger(self)
         self.base_dir: str = os.path.abspath(f'{os.path.dirname(__file__)}{os.path.sep}..')
-        self.default_region: str = os.environ['CDK_DEFAULT_REGION']
-        self.default_account: str = os.environ['CDK_DEFAULT_ACCOUNT']
+
         self.app_config: Optional[AppConfig] = AppConfig()
 
         self.logger.info(f'cdk app base directory : {self.base_dir}')
-        self.logger.info(f'CDK_DEFAULT_REGION : {self.default_region}')
-        self.logger.info(f'CDK_DEFAULT_ACCOUNT : {self.default_account}')
 
         yaml_config_path: str = os.path.join(
             self.base_dir,
@@ -74,7 +71,5 @@ class ConfigHelper(object):
 
 # used for shell script to get attribute value
 if __name__ == '__main__':
-    os.environ['CDK_DEFAULT_REGION'] = 'dummy_region'
-    os.environ['CDK_DEFAULT_ACCOUNT'] = 'dummy_account'
     if 'get_governance_profile' in sys.argv:
-        print(ConfigHelper.get_config().pipeline.get_bootstrap().aws_profile)
+        print(ConfigHelper.get_config().pipeline.bootstrap.aws_profile)

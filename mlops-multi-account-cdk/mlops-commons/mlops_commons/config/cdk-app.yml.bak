@@ -19,8 +19,8 @@
 cdk_app_config:
   app_prefix:   # optional, default to mlops-cdk
   pipeline:
-    account:  # optional, default to environment variable 'CDK_DEFAULT_ACCOUNT'
-    region:   # optional, default to environment variable 'CDK_DEFAULT_REGION'
+    account:  # mandatory
+    region:   # mandatory
     bootstrap:
       enabled:    # optional, default True
       execution_policy_filepath: # optional, default to look for a file name in mlops_commons/config/execution_policy_AWS-ACCOUNT-ID_AWS-REGION.json
@@ -37,11 +37,11 @@ cdk_app_config:
   deployments:
     - set_name: first-example # mandatory
       enabled: # optional, default True
-      default_region: # optional, default to environment variable 'CDK_DEFAULT_REGION'
+      default_region: # optional, default to environment pipeline region
       stages:
         - stage_name: dev # mandatory value must be dev
           account:        # mandatory
-          region:         # optional, default to value to attribute of 'default_region'
+          region:         # optional, default to value of 'default_region'
           enabled:        # optional, default True
           bootstrap:
             enabled:      # optional, default True
@@ -50,7 +50,7 @@ cdk_app_config:
             aws_profile:               # optional, default to profile name by cdk_AWS-ACCOUNT-ID_AWS-REGION
         - stage_name: preprod  # mandatory value must be preprod
           account:        # mandatory
-          region:         # optional, default to value to attribute of 'default_region'
+          region:         # optional, default to value of 'default_region'
           enabled:        # optional, default True
           bootstrap:
             enabled:      # optional, default True
@@ -60,7 +60,7 @@ cdk_app_config:
 
         - stage_name: prod # mandatory value must be prod
           account:         # mandatory
-          region:          # optional, default to value to attribute of 'default_region'
+          region:          # optional, default to value of 'default_region'
           enabled:         # optional, default True
           bootstrap:
             enabled:       # optional, default True
