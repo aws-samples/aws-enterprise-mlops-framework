@@ -15,6 +15,7 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 import os
+from logging import Logger
 
 import aws_cdk
 import aws_cdk as cdk
@@ -36,11 +37,13 @@ from mlops_commons.utilities.cdk_app_config import (
     DeploymentStage,
     PipelineConfig, CodeCommitConfig
 )
+from mlops_commons.utilities.log_helper import LogHelper
+from mlops_commons.utilities.s3_utils import S3Utils
 
 
 class SageMakerServiceCatalogStage(Stage):
     def __init__(
-            self, scope: Construct, construct_id: str,
+            self, scope: Construct, construct_id: str, app_prefix: str,
             **kwargs
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
@@ -48,6 +51,7 @@ class SageMakerServiceCatalogStage(Stage):
         service = SageMakerServiceCatalog(
             self,
             "template",
+            app_prefix=app_prefix,
             **kwargs,
         )
 
@@ -57,6 +61,8 @@ class CdkPipelineStack(Stack):
                  app_prefix: str, deploy_conf: DeploymentStage,
                  pipeline_conf: PipelineConfig, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
+
+        self.logger: Logger = LogHelper.get_logger(self)
 
         dev_account: str = str(deploy_conf.account)
         dev_region: str = deploy_conf.region
@@ -68,6 +74,7 @@ class CdkPipelineStack(Stack):
 
         artifact_bucket = self.create_pipeline_artifact_bucket(
             dev_account=dev_account,
+            dev_region=dev_region,
             app_prefix=app_prefix,
             set_name=set_name
         )
@@ -88,6 +95,8 @@ class CdkPipelineStack(Stack):
                     f"cdk synth --no-lookup",
                 ],
             ),
+            docker_enabled_for_synth=True,
+            docker_enabled_for_self_mutation=True,
             cross_account_keys=True,
             self_mutation=True,
             artifact_bucket=artifact_bucket,
@@ -102,6 +111,7 @@ class CdkPipelineStack(Stack):
             SageMakerServiceCatalogStage(
                 self,
                 "mlops-sm-project",
+                app_prefix=app_prefix,
                 env={
                     "account": dev_account,
                     "region": dev_region,
@@ -112,7 +122,7 @@ class CdkPipelineStack(Stack):
         # General tags applied to all resources created on this scope (self)
         Tags.of(self).add("cdk-app", f"{app_prefix}-sm-template")
 
-    def create_pipeline_artifact_bucket(self, dev_account: str, app_prefix: str, set_name: str) -> s3.Bucket:
+    def create_pipeline_artifact_bucket(self, dev_account: str, dev_region: str, app_prefix: str, set_name: str) -> s3.Bucket:
         # create kms key to be used by the assets bucket
         kms_key = kms.Key(
             self,
@@ -150,10 +160,19 @@ class CdkPipelineStack(Stack):
             )
         )
 
+        bucket_name: str = S3Utils.create_bucket_name(
+            prefix=app_prefix,
+            name_part1='sm-template-pipeline',
+            name_part2=set_name,
+            suffix_part1=dev_account,
+            suffix_part2=dev_region,
+            convert_region_to_short_code=True
+        )
+        self.logger.info(f'Creating sm-project-template pipeline bucket : {bucket_name}')
         s3_artifact = s3.Bucket(
             self,
             "MLOpsSmTemplatePipelineArtifactBucket",
-            bucket_name=f"{app_prefix}-sm-template-pipeline-{cdk.Aws.ACCOUNT_ID}-{set_name}",
+            bucket_name=bucket_name,
             encryption_key=kms_key,
             versioned=True,
             auto_delete_objects=True,
