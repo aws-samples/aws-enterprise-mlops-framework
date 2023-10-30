@@ -23,8 +23,8 @@ import cdk_utilities
 from logging import Logger
 import aws_cdk as cdk
 
-from cdk_pipelines.cdk_pipeline_codecommit_repo import CdkPipelineCodeCommitStack
-from cdk_pipelines.cdk_pipelines import CdkPipelineStack
+from cdk_pipelines.codecommit_stack import CdkPipelineCodeCommitStack
+from cdk_pipelines.pipeline_stack import CdkPipelineStack
 from mlops_commons.utilities.cdk_app_config import CdkAppConfig, DeploymentStage
 from mlops_commons.utilities.config_helper import ConfigHelper
 from mlops_commons.utilities.log_helper import LogHelper

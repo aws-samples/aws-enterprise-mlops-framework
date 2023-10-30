@@ -20,7 +20,7 @@ The repository will also create example SageMaker users (Lead Data Scientist and
 Once you have deployed [mlops-infra](mlops-infra/), deploy [mlops-sm-project-template](mlops-sm-project-template/):
 
 [mlops-sm-project-template](mlops-sm-project-template/) will create a Service Catalog portfolio that contains SageMaker project templates as Service Catalog products.
-To do so, the [service_catalog](mlops-sm-project-template/mlops_sm_project_template/service_catalog.py) stack iterates over the [templates](mlops-sm-project-template/mlops_sm_project_template/templates/) folder which contains your different organization SageMaker project templates in the form of CDK stacks.
+To do so, the [service_catalog](mlops-sm-project-template/cdk_service_catalog/sm_service_catalog.py) stack iterates over the [templates](mlops-sm-project-template/cdk_service_catalog/products) folder which contains your different organization SageMaker project templates in the form of CDK stacks.
 The general idea of what those templates create is explained in [mlops-sm-project-template README](mlops-sm-project-template/README) and in this [SageMaker Projects general architecture diagram](mlops-sm-project-template/diagrams/mlops-sm-project-general-architecture.jpg)
 These example SageMaker project templates can be customized for the need of your organization.
 
@@ -36,6 +36,8 @@ The maintaining Team:
 Viktor Malesevic <malesv@amazon.de>
 
 Fotinos Kyriakides <kyriakf@amazon.com>
+
+Ravi Bhushan Ratnakar <ravibrat@amazon.de>
 
 Gabija Pasiunaite <gabipas@amazon.ch>
 
