@@ -56,6 +56,10 @@ class ConfigHelper(object):
         self.logger.info(f'Trying to loading cdk app configuration file : {yaml_config_path}')
         if os.path.exists(yaml_config_path):
             self.app_config.load(Path(yaml_config_path))
+        else:
+            self.logger.error(f'Cdk app configuration file not found : {yaml_config_path}')
+            sys.exit(1)
+
         self.INSTANCE_INITIALIZED = True
         self.logger.debug(f'cdk app config : {str(self.app_config)}')
 
