@@ -12,6 +12,7 @@ This repository contains the resources that are required to deploy the MLOps Fou
   - [Getting Started](#getting-started)
     - [Prerequisites](#prerequisites)
     - [Repository Structure](#repository-structure)
+    - [Setup and Customization](#setup-and-customization)
     - [Setup AWS Profiles](#setup-aws-profiles)
     - [Bootstrap AWS Accounts](#bootstrap-aws-accounts)
     - [Deployment Options](#deployment-options)
@@ -43,9 +44,7 @@ The networking stack deploys all required resources to create a secure environme
 
 3. SSM parameters are used to store information about the VPC and its related components in each deployment account (DEV/PREPROD/PROD)
 
-**NOTE** This is an optional stack for the scenario that the account does not have an existing VPC configured. If you want to use an existing VPC you will need to comment out `networking_stack` (line 49) and comment out the `vpc` and `subnets` arguments of the `sagemaker_studio_stack` (line 56 and 57) in the `CoreStage` of [pipeline_stack.py](mlops_infra/pipeline_stack.py). Uncomment the commented block (around lines 89-94) from [sagemaker_studio_stack](mlops_infra/sagemaker_studio_stack.py). The uncommented code would load the networking information from the config file for each stage in the pipeline (**DEV/PREPROD/PROD**). In [mlops_infra/config/dev/](mlops_infra/config/dev/), there is an example [constants.py](mlops_infra/config/dev/constants.py) for how the vpc and subnets information should be provided. You can use this constant file to add any additional resources such as an exisiting security group that you want to use or an IAM role. Note that this is specific to each account so you would need to provide this information for every account you want to deploy this solution to it; networking information for each **DEV**, **PREPROD** and **PROD** account.
-
-
+**NOTE** This is an optional stack for the scenario that the account does not have an existing VPC configured. If you want to use an existing VPC please refer to section [Customization](#Customization).
 
 
 You must ensure that the existing VPC contains most of the components that are created in this stack.
@@ -58,7 +57,7 @@ You must ensure that the existing VPC contains most of the components that are c
 This stack handles the deployment of the following resources:
 
 1. SageMaker Studio Domain requires, along with
-2. IAM roles which would be linked to SM Studio user profiles. User Profile creating process is managed by the config files in [mlops_infra/config/dev/data_scientists.yml](mlops_infra/config/dev/data_scientists.yml) and [mlops_infra/config/dev/lead_data_scientists.yml](mlops_infra/config/dev/lead_data_scientists.yml). You can simply add new entries in the list to create a new user. The user will be linked to a role depending on which yml you add them to and will have a prefix defined in the yml files.
+2. User Profile creating process is managed by the config files in [mlops-infra/config/cdk-infra-app.yml.bak](mlops-infra/config/cdk-infra-app.yml.bak). You can simply add new entries in the list to create a new user. The user will be linked to a role depending on which yml you add them to and will have a prefix defined in the yml files.
 
 ```
   users:
@@ -70,7 +69,7 @@ This stack handles the deployment of the following resources:
 ### CodeCommit Stack
 *This stack is only needed if you want to handle deployments of this folder of the repository to be managed through a CICD pipeline.*
 
-This stack handles setting up an AWS CodeCommit repository for this folder of the repository. This repository will be used as the source for the CI/CD pipeline defined in [Pipeline Stack](#pipeline-stack). The repository will be named based on the value defined in [constants.py](mlops_infra/config/constants.py) with this variable `CODE_COMMIT_REPO_NAME`. The repository will be intialised with a default branch as defined in the [constants.py]([mlops_infra/config/constants.py](mlops_infra/config/constants.py)) file under `PIPELINE_BRANCH` variable.
+This stack handles setting up an AWS CodeCommit repository for this folder of the repository. This repository will be used as the source for the CI/CD pipeline defined in [Pipeline Stack](#pipeline-stack). The repository will be named based on the value defined in [configs](../mlops-commons/mlops_commons/config/cdk-app.yml.bak). The repository will be intialised with a default branch as defined in the [configs](../mlops-commons/mlops_commons/config/cdk-app.yml.bak).
 
 ### Pipeline Stack
 
@@ -80,11 +79,9 @@ The CICD pipeline in this repository is setup to monitor an AWS CodeCommit repos
 
 If you are using other sources like github or bitbucket for your repository, you will need to modify the connection to the appropriate repository as defined in [mlops_infra/pipeline_stack.py](mlops_infra/pipeline_stack.py). This can be done using AWS CodeStar but must be setup on the account.
 
-Make sure the pipelines also point to your targeted branch; by default the pipeline is linked to `main` branch events, this is defined in the [constants.py](mlops_infra/config/constants.py) file under `PIPELINE_BRANCH` variable.
+Make sure the pipelines also point to your targeted branch; by default the pipeline is linked to `main` branch events, this is defined in the [configs](../mlops-commons/mlops_commons/config/cdk-app.yml.bak).
 
-[accounts.json](mlops_infra/config/accounts.json) contains information about the target accounts you want to use for this repository CICD pipeline(s) and the target deployment accounts (DEV/PREPROD/PROD).
-
-[accounts.json](mlops_infra/config/accounts.json) is created as a list where each entry is a different set of DEV/PREPROD/PROD accounts. By default we recommend starting with one entry of DEV/PREPROD/PROD accounts but this can be used to scale the infrastructure to several organizational units/teams.
+Account sets in [configs](../mlops-commons/mlops_commons/config/cdk-app.yml.bak) is created as a list where each entry is a different set of DEV/PREPROD/PROD accounts. By default we recommend starting with one entry of DEV/PREPROD/PROD accounts but this can be used to scale the infrastructure to several organizational units/teams.
 The repository will create one parallel CICD pipeline for each entry. (please ensure all new target accounts you add to the list are bootstrapped)
 
 The CICD pipeline will deploy all stacks and resources to the appropriate accounts.
@@ -106,35 +103,46 @@ This is an AWS CDK project written in Python 3.8. Here's what you need to have o
 
 ```
 .
+├── ADVANCED_TOPICS.md
+├── DEVELOPER_GUIDE.md
 ├── LICENSE.txt
 ├── Makefile
 ├── README.md
 ├── app.py
 ├── cdk.context.json
 ├── cdk.json
-├── diagrams
-├── functions                                   <--- lambda functions and layers
-│   └── sm_studio                               <--- sagemaker studio stack related lambda function
-│       └── enable_sm_projects                  <--- lambda function to enable sagemaker projects on the account and links the IAM roles of the domain users (used as a custom resource)
-├── mlops_infra
-│   ├── cdk_helper_scripts
-│   ├── config
-│   │   ├── config_mux.py
-│   │   ├── constants.py                        <--- global configs to be used in CDK stacks regardless of the account
-│   │   └── dev                                 <--- configs for the dev account (default configs if not present in other config folders)
-│   │       ├── data_scientists.yml             <--- yml file containing a list of users to be linked to data scientist role
-│   │       └── lead_data_scientists.yml        <--- yml file containing a list of users to be linked to lead data scientist role
+├── cdk_pipelines
+│   ├── __init__.py
+│   ├── codecommit_stack.py
+│   └── pipeline_stack.py
+├── cdk_sm_infra
+│   ├── __init__.py
 │   ├── constructs
-│   │   └── sm_roles.py                         <--- construct containing IAM roles for sagemaker studio users
-│   ├── codecommit_stack.py                     <--- stack for creation a codecommit repo based on this folder for the CICD pipeline
-│   ├── networking_stack.py                     <--- stack to setup a VPC and all related components i.e. subents and vpc endpoints as required
-│   ├── pipeline_stack.py                       <--- stack for CICD with code pipeline setup for the repo
-│   └── sagemaker_studio_stack.py               <--- stack to create sagemaker studio domain along with related IAM roles and the domain users
+│   │   ├── create_network.py
+│   │   ├── import_network.py
+│   │   ├── sm_network.py
+│   │   ├── sm_roles.py
+│   │   ├── sm_studio.py
+│   │   ├── sm_studio_infra.py
+│   │   └── sm_studio_network.py
+│   ├── functions
+│   │   └── sm_studio
+│   │       └── enable_sm_projects
+│   └── sm_infra_stack.py
+├── cdk_utilities
+│   ├── __init__.py
+│   └── cdk_infra_app_config.py
+├── config
+│   └── cdk-infra-app.yml.bak
+├── diagrams
+│   ├── MLOPs Foundation Architecture-mlops infrastructure architecture.jpg
+│   ├── MLOPs Foundation Architecture-mlops secure networking.jpg
+│   └── MLOPs Foundation Architecture-sagemaker studio stack.jpg
 ├── requirements-dev.txt
-├── requirements.txt                            <--- cdk packages used in the stacks (must be installed)
-└── scripts                                     <--- shell scripts to automate part of the deployments
-    ├── cdk-account-setup.sh
-    └── install-prerequisites-brew.sh
+├── requirements.txt
+└── scripts
+    ├── mlops-infra.sh
+    └── project-setup.sh
 ```
 
 if you are using a mac or a linux machine that supports `make` commands, you will be able to do the following:
@@ -144,7 +152,87 @@ if you are using a mac or a linux machine that supports `make` commands, you wil
 
 This repository also contains some shell scripts that you can use to setup your machine and aws accounts:
 
-* If you have a mac machine with [Homebrew](https://brew.sh/) installed, you can use [scripts/install-prerequisites-brew.sh](scripts/install-prerequisites-brew.sh) to install the prerequisites and setup the python environment
+* If you have a mac machine with [Homebrew](https://brew.sh/) installed, you can use [scripts/install-prerequisites-brew.sh](../mlops-commons/mlops_commons/scripts/install-prerequisites-brew.sh) to install the prerequisites and setup the python environment
+
+### Setup and Customization
+First, copy the [configs file](config/cdk-infra-app.yml.bak), removing the ```.bak``` suffix. Here you can modify the defaults - which create a VPC and related resources. Or you can provide your pre-existing VPC and resources, by changing the ```deployments``` section, including the ```import_network``` section. The solution also supports multiplle account sets (ie multiple sets of dev/stg/prod) by including multiple entries in the ```deployments``` section.
+
+**Note**: Not creating a ```cdk-infra-app.yml``` will automatically implement the defautls. 
+
+Example configurations: 
+
+*Change defaults (eg different CIDR range)*
+
+```yaml
+cdk_infra_app_config:
+  network:
+    default_create_network:
+      vpc_cidr: "<NEW CIDR RANGE>"
+```
+
+*Multi account - 1 account set with dafaults and 1 with imported network configs*
+
+**NOTE**: Only the second account set needs to be specified - since the first one follows the defaults.
+```yaml
+cdk_infra_app_config:
+  network:
+    deployments:
+      - set_name: SECOND-example
+        stages:
+          - stage_name: dev
+            import_network:
+              vpc_id: "<YOUR IDs>"
+              subnets:
+                - "<YOUR IDs>"
+                - "<YOUR IDs>"
+                - "<YOUR IDs>"
+              base_security_group: "<YOUR IDs>"
+          - stage_name: preprod
+            import_network:
+              vpc_id: "<YOUR IDs>"
+              subnets:
+                - "<YOUR IDs>"
+                - "<YOUR IDs>"
+                - "<YOUR IDs>"
+              base_security_group: "<YOUR IDs>"
+          - stage_name: prod
+            import_network:
+              vpc_id: "<YOUR IDs>"
+              subnets:
+                - "<YOUR IDs>"
+                - "<YOUR IDs>"
+                - "<YOUR IDs>"
+              base_security_group: "<YOUR IDs>"
+```
+
+*Creating networking in dev, but importing in staging and production*
+
+```yaml
+cdk_infra_app_config:
+  network:
+    deployments:
+      - set_name: first-example
+        stages:
+          - stage_name: dev  # not strictly needed
+          - stage_name: preprod
+            import_network:
+              vpc_id: "<YOUR IDs>"
+              subnets:
+                - "<YOUR IDs>"
+                - "<YOUR IDs>"
+                - "<YOUR IDs>"
+              base_security_group: "<YOUR IDs>"
+          - stage_name: prod
+            import_network:
+              vpc_id: "<YOUR IDs>"
+              subnets:
+                - "<YOUR IDs>"
+                - "<YOUR IDs>"
+                - "<YOUR IDs>"
+              base_security_group: "<YOUR IDs>"
+```
+
+**NOTE**: In case that both import and create network are specified, the import always takes priority. 
 
 ### Setup AWS Profiles
 

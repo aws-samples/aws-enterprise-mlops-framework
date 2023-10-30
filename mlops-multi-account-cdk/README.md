@@ -27,6 +27,11 @@ These example SageMaker project templates can be customized for the need of your
 **Note:** Both of those folders are cdk applications which also come with their respective CICD pipelines hosted in a central governance account, to deploy and maintain the infrastructure they define to target accounts. This is why you will see that both also contain a `pipeline_stack` and a `codecommit_stack`.
 However if you are not interested in the concept of a centralized governance account and CICD mechanism, or if you already have an internal mechanism in place for those ([AWS Control Tower](https://docs.aws.amazon.com/controltower/index.html), [ADF](https://github.com/awslabs/aws-deployment-framework), etc...), you can simply use the `CoreStage` of each of those CDK applications. See the READMEs of each subfolder for more details.
 
+## Solution Setup
+- Mention configuring cdk-app.yml including examples
+- Account set specific configs (sh commands etc)
+- Include section for manual bootstrap ( move from the infra readme here)
+
 ## Contacts
 
 If you have any comments or questions, please contact:
