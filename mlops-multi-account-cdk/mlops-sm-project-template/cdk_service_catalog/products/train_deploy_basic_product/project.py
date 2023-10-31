@@ -120,8 +120,8 @@ class MLOpsStack(sc.ProductStack):
             self,
             "PreProdAccount",
             type="String",
-            min_length=11,
-            max_length=13,
+            min_length=12,
+            max_length=12,
             description="Id of preprod account.",
         ).value_as_string
 
@@ -129,8 +129,8 @@ class MLOpsStack(sc.ProductStack):
             self,
             "ProdAccount",
             type="String",
-            min_length=11,
-            max_length=13,
+            min_length=12,
+            max_length=12,
             description="Id of prod account.",
         ).value_as_string
 
@@ -138,13 +138,14 @@ class MLOpsStack(sc.ProductStack):
             self,
             "DeploymentRegion",
             type="String",
-            min_length=8,
-            max_length=10,
+            min_length=9,
+            max_length=14,
             description="Deployment region for preprod and prod account.",
         ).value_as_string
 
         Tags.of(self).add("sagemaker:project-id", project_id)
         Tags.of(self).add("sagemaker:project-name", project_name)
+        Tags.of(self).add("sagemaker:app-prefix", app_prefix)
 
         SSMConstruct(
             self,
