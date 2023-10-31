@@ -58,13 +58,16 @@ class CdkPipelineCodeCommitStack(Stack):
 
     @classmethod
     def get_repo(cls, scope, set_name: str, pipeline_conf: PipelineConfig) -> codecommit.Repository:
+        return cls.get_instance(scope, set_name, pipeline_conf).repo
 
+    @classmethod
+    def get_instance(cls, scope, set_name: str, pipeline_conf: PipelineConfig) -> 'CdkPipelineCodeCommitStack':
         return CdkPipelineCodeCommitStack(
-                scope,
-                f'ml-infra-cc-repo-{set_name}',
-                set_name=set_name,
-                conf=pipeline_conf.code_commit.infra,
-                description='CDK stack for creating MLOps Infra pipeline codecommit repository',
-                env=cdk.Environment(account=str(pipeline_conf.account), region=pipeline_conf.region)
-            ).repo
+            scope,
+            f'ml-infra-cc-repo-{set_name}',
+            set_name=set_name,
+            conf=pipeline_conf.code_commit.infra,
+            description='CDK stack for creating MLOps Infra pipeline codecommit repository',
+            env=cdk.Environment(account=str(pipeline_conf.account), region=pipeline_conf.region)
+        )
 

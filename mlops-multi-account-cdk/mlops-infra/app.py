@@ -23,6 +23,7 @@ from logging import Logger
 import aws_cdk as cdk
 
 import cdk_utilities
+from cdk_pipelines.codecommit_stack import CdkPipelineCodeCommitStack
 from cdk_pipelines.pipeline_stack import CdkPipelineStack
 from mlops_commons.utilities.cdk_app_config import CdkAppConfig
 from mlops_commons.utilities.config_helper import ConfigHelper
@@ -53,6 +54,12 @@ class MLOpsInfraCdkApp:
                                  f'enabled=True at deployments level in yaml configuration file ')
                 continue
 
+            repo_stack: CdkPipelineCodeCommitStack = CdkPipelineCodeCommitStack.get_instance(
+                app,
+                set_name=dc.set_name,
+                pipeline_conf=cac.pipeline
+            )
+
             CdkPipelineStack(
                 app,
                 f"ml-infra-deploy-pipeline-{dc.set_name}",
@@ -62,7 +69,7 @@ class MLOpsInfraCdkApp:
                 pipeline_conf=cac.pipeline,
                 description="CI/CD CDK Pipelines for MLOps Infra",
                 env=cdk.Environment(account=str(cac.pipeline.account), region=cac.pipeline.region)
-            )
+            ).add_dependency(repo_stack)
 
         app.synth()
 

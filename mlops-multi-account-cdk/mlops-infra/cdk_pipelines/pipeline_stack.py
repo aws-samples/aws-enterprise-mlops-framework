@@ -88,10 +88,10 @@ class CdkPipelineStack(Stack):
 
         code_commit_conf: CodeCommitConfig = pipeline_conf.code_commit.infra
 
-        repo: codecommit.IRepository = CdkPipelineCodeCommitStack.get_repo(
-            scope,
-            set_name=set_name,
-            pipeline_conf=pipeline_conf
+        repo: codecommit.IRepository = codecommit.Repository.from_repository_name(
+            self,
+            "MLOpsInfraPipelineCodeRepo",
+            f'{code_commit_conf.repo_name}_{set_name}'
         )
 
         artifact_bucket = self.create_pipeline_artifact_bucket(
