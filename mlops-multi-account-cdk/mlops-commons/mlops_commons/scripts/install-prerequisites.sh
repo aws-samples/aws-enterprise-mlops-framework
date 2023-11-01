@@ -191,8 +191,18 @@ install_docker(){
     brew install --cask docker
   else
     echo "install docker for linux"
-    curl -fsSL https://get.docker.com -o get-docker.sh
-    bash ./get-docker.sh
+    os_name=$(get_os_name)
+    if [[ "$os_name" == "AmazonLinux" ]]; then
+      yum_cmd="yum"
+      if [[ "$USER" != "root" ]]; then
+        echo "current user : $USER , doesn't have root permission, kindly approve it to install packages"
+        yum_cmd="sudo yum"
+      fi
+      $yum_cmd install docker
+    else
+      curl -fsSL https://get.docker.com -o get-docker.sh
+      bash ./get-docker.sh
+    fi
   fi
 }
 
@@ -223,10 +233,10 @@ install_linux_packages(){
         yum_cmd="sudo yum"
       fi
 
-      [[ -z "$($yum_cmd list installed which 2>&1 |  grep -i -E which)" ]] && $yum_cmd update -y && $yum_cmd upgrade -y && $yum_cmd install -y which
-      [[ -z "$($yum_cmd list installed curl 2>&1 |  grep -i -E curl)" ]] && $yum_cmd update -y && $yum_cmd upgrade -y && $yum_cmd install -y curl
-      [[ -z "$($yum_cmd list installed gcc 2>&1 |  grep -i -E ^gcc)" ]] && $yum_cmd install -y gcc
-      [[ -z "$($yum_cmd list installed python3-devel 2>&1 |  grep -i -E ^python3-devel)" ]] && $yum_cmd install -y python3-devel
+      [[ -z "$($yum_cmd list installed which 2>&1 |  grep -i -E which)" ]] && $yum_cmd update -y && $yum_cmd upgrade -y && $yum_cmd install -y which --allowerasing
+      [[ -z "$($yum_cmd list installed curl 2>&1 |  grep -i -E curl)" ]] && $yum_cmd update -y && $yum_cmd upgrade -y && $yum_cmd install -y curl --allowerasing
+      [[ -z "$($yum_cmd list installed gcc 2>&1 |  grep -i -E ^gcc)" ]] && $yum_cmd install -y gcc --allowerasing
+      [[ -z "$($yum_cmd list installed python3-devel 2>&1 |  grep -i -E ^python3-devel)" ]] && $yum_cmd install -y python3-devel --allowerasing
 
     else
       echo "not supported os : $os_name"
