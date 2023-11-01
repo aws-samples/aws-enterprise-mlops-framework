@@ -210,18 +210,21 @@ install_linux_packages(){
         apt_cmd="sudo apt-get"
         dpkg_cmd="sudo dpkg"
       fi
+
       [[ -z "$(which curl 2>&1 |  grep -i -E curl)" ]] && $apt_cmd update -y && $apt_cmd upgrade -y && $apt_cmd install -y curl
       [[ -z "$($dpkg_cmd -s gcc 2>&1 |  grep -i -E ^Package)" ]] && $apt_cmd install -y gcc
       [[ -z "$($dpkg_cmd -s python3-dev 2>&1 |  grep -i -E ^Package)" ]] && $apt_cmd install -y python3-dev
 
     elif [[ "$os_name" == "RedHat" ]] || [[ "$os_name" == "Fedora" ]] || [[ "$os_name" == "CentOS" ]] || [[ "$os_name" == "AmazonLinux" ]]; then
+
       yum_cmd="yum"
       if [[ "$USER" != "root" ]]; then
         echo "current user : $USER , doesn't have root permission, kindly approve it to install packages"
         yum_cmd="sudo yum"
       fi
-      $yum_cmd update -y && $yum_cmd upgrade -y && $yum_cmd install -y which
-      [[ -z "$(which curl 2>&1 |  grep -i -E curl)" ]] && $yum_cmd install -y curl
+
+      [[ -z "$($yum_cmd list installed which 2>&1 |  grep -i -E which)" ]] && $yum_cmd update -y && $yum_cmd upgrade -y && $yum_cmd install -y which
+      [[ -z "$($yum_cmd list installed curl 2>&1 |  grep -i -E curl)" ]] && $yum_cmd update -y && $yum_cmd upgrade -y && $yum_cmd install -y curl
       [[ -z "$($yum_cmd list installed gcc 2>&1 |  grep -i -E ^gcc)" ]] && $yum_cmd install -y gcc
       [[ -z "$($yum_cmd list installed python3-devel 2>&1 |  grep -i -E ^python3-devel)" ]] && $yum_cmd install -y python3-devel
 
