@@ -1,12 +1,17 @@
 #!/bin/bash
 # this script uses Homebrew to do the installations for all prerequisites to deploy the solution described in this repository
 
+aws_cdk_mlops_home_path=~/aws_cdk_mlops
 node_version="v18.18.2"
-aws_cdk_mlops_profile='.aws_cdk_mlops_profile'
-miniconda_home_path=~/aws_cdk_mlops/miniconda3
-nodejs_home_path=~/aws_cdk_mlops/nodejs
+aws_cdk_mlops_profile="$aws_cdk_mlops_home_path/.aws_cdk_mlops_profile"
+miniconda_home_path="$aws_cdk_mlops_home_path/miniconda3"
+nodejs_home_path="$aws_cdk_mlops_home_path/nodejs"
 export PATH=$miniconda_home_path/bin:$PATH
 export PATH=$nodejs_home_path/node-$node_version/bin:$PATH
+
+if [[ -f $aws_cdk_mlops_profile ]]; then
+  source $aws_cdk_mlops_profile
+fi
 
 get_os_type(){
     case "$OSTYPE" in
@@ -78,11 +83,11 @@ update_executable_path(){
     esac
 
 
-    if [[ -z $(grep "export PATH=$path_to_add/bin:" ~/$aws_cdk_mlops_profile) ]]; then
-      echo "export PATH=$path_to_add/bin:$PATH" >> ~/$aws_cdk_mlops_profile
-      echo "adding nodejs path to  ~/$aws_cdk_mlops_profile"
+    if [[ ! -f $aws_cdk_mlops_profile ]] || [[ -z $(grep "export PATH=$path_to_add/bin:" $aws_cdk_mlops_profile) ]]; then
+      echo "export PATH=$path_to_add/bin:$PATH" >> $aws_cdk_mlops_profile
+      echo "adding nodejs path to  $aws_cdk_mlops_profile"
     fi
-    source ~/$aws_cdk_mlops_profile
+    source $aws_cdk_mlops_profile
 
 }
 
@@ -96,6 +101,10 @@ install_miniconda(){
   bash $miniconda_home_path/miniconda.sh -b -u -p $miniconda_home_path
   rm -rf $miniconda_home_path/miniconda.sh
   export PATH=$miniconda_home_path/bin:$PATH
+  if [[ ! -f $aws_cdk_mlops_profile ]] || [[ -z $(grep "export PATH=$miniconda_home_path/bin:" $aws_cdk_mlops_profile) ]]; then
+    echo "export PATH=$miniconda_home_path/bin:$PATH" >> $aws_cdk_mlops_profile
+    echo "adding miniconda path to  $aws_cdk_mlops_profile"
+  fi
   echo "miniconda installed at $miniconda_home_path"
 }
 
@@ -127,15 +136,15 @@ install_nodejs(){
       if [[ -z $(grep "export PATH=$path_to_add:" ~/.bashrc) ]]; then
         echo export PATH=$path_to_add:$PATH >> ~/.bashrc
       fi
-      source ~/.bashrc
+      # source ~/.bashrc
       echo "setting ~/.bashrc"
     fi
 
-    if [[ -z $(grep "export PATH=$path_to_add:" ~/$aws_cdk_mlops_profile) ]]; then
-      echo "export PATH=$path_to_add:$PATH" >> ~/$aws_cdk_mlops_profile
-      echo "adding nodejs path to  ~/$aws_cdk_mlops_profile"
+    if [[ ! -f $aws_cdk_mlops_profile ]] || [[ -z $(grep "export PATH=$path_to_add:" $aws_cdk_mlops_profile) ]]; then
+      echo "export PATH=$path_to_add:$PATH" >> $aws_cdk_mlops_profile
+      echo "adding nodejs path to  $aws_cdk_mlops_profile"
     fi
-    source ~/$aws_cdk_mlops_profile
+    source $aws_cdk_mlops_profile
 
     if [[ "$arc_type" == *"_64" ]]; then
        arc_type="x64"
@@ -192,14 +201,25 @@ install_linux_packages(){
     os_name=$(get_os_name)
     # echo "installing linux packages for $os_name"
     if [[ "$os_name" == "Ubuntu" ]]; then
-      [[ -z "$(which curl 2>&1 |  grep -i -E curl)" ]] && apt-get update -y && apt-get upgrade -y && apt-get install -y curl
-      [[ -z "$(dpkg --info gcc 2>&1 |  grep -i -E ^Name)" ]] && apt-get install -y gcc
-      [[ -z "$(dpkg --info python3-dev 2>&1 |  grep -i -E ^Name)" ]] && apt-get install -y python3-dev
+
+      apt_cmd="apt-get"
+      dpkg_cmd="dpkg"
+      if [[ "$USER" != "root" ]]; then
+        echo "current user : $USER , doesn't have root permission, kindly approve it to install packages"
+        apt_cmd="sudo apt-get"
+        dpkg_cmd="sudo dpkg"
+      fi
+      [[ -z "$(which curl 2>&1 |  grep -i -E curl)" ]] && $apt_cmd update -y && $apt_cmd upgrade -y && $apt_cmd install -y curl
+      [[ -z "$($dpkg_cmd -s gcc 2>&1 |  grep -i -E ^Package)" ]] && $apt_cmd install -y gcc
+      [[ -z "$($dpkg_cmd -s python3-dev 2>&1 |  grep -i -E ^Package)" ]] && $apt_cmd install -y python3-dev
+
     elif [[ "$os_name" == "RedHat" ]] || [[ "$os_name" == "Fedora" ]] || [[ "$os_name" == "CentOS" ]]; then
+
       yum install -y which
       [[ -z "$(which curl 2>&1 |  grep -i -E curl)" ]] && yum update -y && yum upgrade -y && yum install -y curl
       [[ -z "$(yum list installed gcc 2>&1 |  grep -i -E ^gcc)" ]] && yum install -y gcc
       [[ -z "$(yum list installed python3-devel 2>&1 |  grep -i -E ^python3-devel)" ]] && yum install -y python3-devel
+
     else
       echo "not supported os : $os_name"
     fi
@@ -207,6 +227,11 @@ install_linux_packages(){
 }
 
 install_prerequisites(){
+
+  if [[ ! -d "$aws_cdk_mlops_home_path" ]]; then
+    echo "$aws_cdk_mlops_home_path doesn't exist, creating it now."
+    mkdir -p $aws_cdk_mlops_home_path
+  fi
 
   # install dev packages for if os is linux
   install_linux_packages
