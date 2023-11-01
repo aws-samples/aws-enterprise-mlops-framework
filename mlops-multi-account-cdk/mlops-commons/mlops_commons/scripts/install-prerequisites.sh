@@ -207,13 +207,16 @@ install_docker(){
       $yum_cmd install -y docker
       $usermod_cmd -a -G docker "$USER"
       id "$USER"
-      newgrp docker
+      #newgrp docker
       $systemctl_cmd enable docker.service
       $systemctl_cmd start docker.service
 
     else
       curl -fsSL https://get.docker.com -o get-docker.sh
       bash ./get-docker.sh
+      apt-get install -y uidmap
+      dockerd-rootless-setuptool.sh install
+      # export DOCKER_HOST=unix:///run/user/1000/docker.sock
     fi
   fi
 }
@@ -228,20 +231,21 @@ install_linux_packages(){
       apt_cmd="apt-get"
       dpkg_cmd="dpkg"
       if [[ "$USER" != "root" ]]; then
-        echo "current user : $USER , doesn't have root permission, kindly approve it to install packages"
+        echo "current user : $USER , doesn't have root permission, kindly approve it to install packages if asked"
         apt_cmd="sudo apt-get"
         dpkg_cmd="sudo dpkg"
       fi
 
       [[ -z "$(which curl 2>&1 |  grep -i -E curl)" ]] && $apt_cmd update -y && $apt_cmd upgrade -y && $apt_cmd install -y curl
-      [[ -z "$($dpkg_cmd -s gcc 2>&1 |  grep -i -E ^Package)" ]] && $apt_cmd install -y gcc
-      [[ -z "$($dpkg_cmd -s python3-dev 2>&1 |  grep -i -E ^Package)" ]] && $apt_cmd install -y python3-dev
+      [[ -z "$($dpkg_cmd -s gcc 2>&1 |  grep -i -E ^Package)" ]] && $apt_cmd update -y && $apt_cmd upgrade -y && $apt_cmd install -y gcc
+      [[ -z "$($dpkg_cmd -s uidmap 2>&1 |  grep -i -E ^Package)" ]] && $apt_cmd update -y && $apt_cmd upgrade -y && $apt_cmd install -y uidmap
+      [[ -z "$($dpkg_cmd -s python3-dev 2>&1 |  grep -i -E ^Package)" ]] && $apt_cmd update -y && $apt_cmd upgrade -y && $apt_cmd install -y python3-dev
       echo "linux packages installed for $os_name"
     elif [[ "$os_name" == "RedHat" ]] || [[ "$os_name" == "Fedora" ]] || [[ "$os_name" == "CentOS" ]] || [[ "$os_name" == "AmazonLinux" ]]; then
 
       yum_cmd="yum"
       if [[ "$USER" != "root" ]]; then
-        echo "current user : $USER , doesn't have root permission, kindly approve it to install packages"
+        echo "current user : $USER , doesn't have root permission, kindly approve it to install packages if asked"
         yum_cmd="sudo yum"
       fi
 

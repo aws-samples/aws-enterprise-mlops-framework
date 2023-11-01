@@ -6,7 +6,8 @@ CLI_SCRIPT=$(readlink -f "${BASH_SOURCE[0]}")
 CLI_SCRIPT_PATH=$(dirname "$CLI_SCRIPT")
 PROJECT_SCRIPT=$(readlink -f "$0")
 PROJECT_SCRIPT_PATH=$(dirname "$PROJECT_SCRIPT")
-aws_cdk_mlops_profile='.aws_cdk_mlops_profile'
+aws_cdk_mlops_home_path=~/aws_cdk_mlops
+aws_cdk_mlops_profile="$aws_cdk_mlops_home_path/.aws_cdk_mlops_profile"
 
 get_os_type(){
     case "$OSTYPE" in
@@ -26,15 +27,15 @@ load_mac_profile(){
       */bash) source ~/.bash_profile ;;
       *) echo "not supported shell" ;;
     esac
-    if [[ -f ~/$aws_cdk_mlops_profile ]]; then
-      source ~/$aws_cdk_mlops_profile
+    if [[ -f "$aws_cdk_mlops_profile" ]]; then
+      source "$aws_cdk_mlops_profile"
     fi
 }
 
 load_linux_profile(){
   source ~/.bashrc
-  if [[ -f ~/$aws_cdk_mlops_profile ]]; then
-    source ~/$aws_cdk_mlops_profile
+  if [[ -f "$aws_cdk_mlops_profile" ]]; then
+    source "$aws_cdk_mlops_profile"
   fi
 }
 
