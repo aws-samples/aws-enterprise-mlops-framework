@@ -193,28 +193,35 @@ install_docker(){
     echo "install docker for linux"
     os_name=$(get_os_name)
     echo "installing docker for $os_name"
-    if [[ "$os_name" == "AmazonLinux" ]]; then
+    if [[ "$os_name" == "AmazonLinux" ]] || [[ "$os_name" == "RedHat" ]]; then
       yum_cmd="yum"
       systemctl_cmd="systemctl"
       usermod_cmd="usermod"
+      groupadd_cmd="groupadd"
       if [[ "$USER" != "root" ]]; then
         echo "current user : $USER , doesn't have root permission, kindly approve it to install packages"
         yum_cmd="sudo yum"
         systemctl_cmd="sudo systemctl"
         usermod_cmd="sudo usermod"
+        groupadd_cmd="sudo groupadd"
       fi
 
       $yum_cmd install -y docker
+      [[ -z "$(compgen -g | grep docker 2>&1 |  grep -i -E docker)" ]] && $groupadd_cmd docker
       $usermod_cmd -a -G docker "$USER"
       id "$USER"
       #newgrp docker
-      $systemctl_cmd enable docker.service
-      $systemctl_cmd start docker.service
+      container_name="docker"
+      if [[ "$os_name" == "RedHat" ]]; then
+        container_name="podman"
+      fi
+      echo "container provider name : $container_name"
+      $systemctl_cmd enable $container_name.service
+      $systemctl_cmd start $container_name.service
 
     else
       curl -fsSL https://get.docker.com -o get-docker.sh
       bash ./get-docker.sh
-      apt-get install -y uidmap
       dockerd-rootless-setuptool.sh install
       # export DOCKER_HOST=unix:///run/user/1000/docker.sock
     fi
