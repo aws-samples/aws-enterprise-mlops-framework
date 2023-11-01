@@ -192,13 +192,25 @@ install_docker(){
   else
     echo "install docker for linux"
     os_name=$(get_os_name)
+    echo "installing docker for $os_name"
     if [[ "$os_name" == "AmazonLinux" ]]; then
       yum_cmd="yum"
+      systemctl_cmd="systemctl"
+      usermod_cmd="usermod"
       if [[ "$USER" != "root" ]]; then
         echo "current user : $USER , doesn't have root permission, kindly approve it to install packages"
         yum_cmd="sudo yum"
+        systemctl_cmd="sudo systemctl"
+        usermod_cmd="sudo usermod"
       fi
+
       $yum_cmd install -y docker
+      $usermod_cmd -a -G docker "$USER"
+      id "$USER"
+      newgrp docker
+      $systemctl_cmd enable docker.service
+      $systemctl_cmd start docker.service
+
     else
       curl -fsSL https://get.docker.com -o get-docker.sh
       bash ./get-docker.sh
