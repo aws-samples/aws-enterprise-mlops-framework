@@ -32,6 +32,7 @@ get_os_name(){
       *Red*Hat*) echo "RedHat" ;;
       *Fedora*) echo "Fedora" ;;
       *CentOS*) echo "CentOS" ;;
+      *Amazon*) echo "AmazonLinux" ;;
       *)  echo "" ;;
     esac
 }
@@ -213,12 +214,16 @@ install_linux_packages(){
       [[ -z "$($dpkg_cmd -s gcc 2>&1 |  grep -i -E ^Package)" ]] && $apt_cmd install -y gcc
       [[ -z "$($dpkg_cmd -s python3-dev 2>&1 |  grep -i -E ^Package)" ]] && $apt_cmd install -y python3-dev
 
-    elif [[ "$os_name" == "RedHat" ]] || [[ "$os_name" == "Fedora" ]] || [[ "$os_name" == "CentOS" ]]; then
-
-      yum install -y which
-      [[ -z "$(which curl 2>&1 |  grep -i -E curl)" ]] && yum update -y && yum upgrade -y && yum install -y curl
-      [[ -z "$(yum list installed gcc 2>&1 |  grep -i -E ^gcc)" ]] && yum install -y gcc
-      [[ -z "$(yum list installed python3-devel 2>&1 |  grep -i -E ^python3-devel)" ]] && yum install -y python3-devel
+    elif [[ "$os_name" == "RedHat" ]] || [[ "$os_name" == "Fedora" ]] || [[ "$os_name" == "CentOS" ]] || [[ "$os_name" == "AmazonLinux" ]]; then
+      yum_cmd="yum"
+      if [[ "$USER" != "root" ]]; then
+        echo "current user : $USER , doesn't have root permission, kindly approve it to install packages"
+        yum_cmd="sudo yum"
+      fi
+      $yum_cmd update -y && $yum_cmd upgrade -y && $yum_cmd install -y which
+      [[ -z "$(which curl 2>&1 |  grep -i -E curl)" ]] && $yum_cmd install -y curl
+      [[ -z "$($yum_cmd list installed gcc 2>&1 |  grep -i -E ^gcc)" ]] && $yum_cmd install -y gcc
+      [[ -z "$($yum_cmd list installed python3-devel 2>&1 |  grep -i -E ^python3-devel)" ]] && $yum_cmd install -y python3-devel
 
     else
       echo "not supported os : $os_name"
