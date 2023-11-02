@@ -223,10 +223,16 @@ install_docker(){
     else
       curl -fsSL https://get.docker.com -o get-docker.sh
       bash ./get-docker.sh
+      if [[ "$os_name" == "CentOS" ]] || [[ "$os_name" == "Fedora" ]]; then
+        sudo modprobe ip_tables
+      fi
       if [[ "$USER" != "root" ]]; then
         dockerd-rootless-setuptool.sh install
       fi
       # export DOCKER_HOST=unix:///run/user/1000/docker.sock
+      # Debian, if docker ps works fine but container doesn't start giving error 'Interactive authentication required.: unknown.' then restart your computer
+      #
+
     fi
   fi
 }
