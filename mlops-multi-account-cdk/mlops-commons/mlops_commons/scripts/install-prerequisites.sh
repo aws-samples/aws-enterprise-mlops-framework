@@ -33,6 +33,7 @@ get_os_name(){
       *Fedora*) echo "Fedora" ;;
       *CentOS*) echo "CentOS" ;;
       *Amazon*) echo "AmazonLinux" ;;
+      *Debian*) echo "Debian" ;;
       *)  echo "" ;;
     esac
 }
@@ -222,7 +223,9 @@ install_docker(){
     else
       curl -fsSL https://get.docker.com -o get-docker.sh
       bash ./get-docker.sh
-      dockerd-rootless-setuptool.sh install
+      if [[ "$USER" != "root" ]]; then
+        dockerd-rootless-setuptool.sh install
+      fi
       # export DOCKER_HOST=unix:///run/user/1000/docker.sock
     fi
   fi
@@ -233,7 +236,7 @@ install_linux_packages(){
   if  [[ "$os_type" == "Linux" ]]; then
     os_name=$(get_os_name)
     # echo "installing linux packages for $os_name"
-    if [[ "$os_name" == "Ubuntu" ]]; then
+    if [[ "$os_name" == "Ubuntu" ]] || [[ "$os_name" == "Debian" ]] || [[ "$os_name" == "LinuxMint" ]]; then
 
       apt_cmd="apt-get"
       dpkg_cmd="dpkg"
