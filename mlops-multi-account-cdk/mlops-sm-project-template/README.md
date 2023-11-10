@@ -91,11 +91,13 @@ These resources are deployed to the DEV account with cross account access enable
 
 This construct contains resources that create a CI/CD pipeline to orchestrate a model training using SageMaker Pipelines starting from doing preprocessing jobs over the data and end by registering the trained model in a model package group in SageMaker Model Registry. After the pipeline finishes running successfuly, the model will have `Pending Manual Approval` status in SageMaker Model Registry.
 
+
+---
 In [seed_code/build_app](seed_code/build_app/), you will find the base code that would be setup when you create a new SageMaker Project. It is **python** based and is expected to run inside a CodeBuild project. There is a [buildspec.yml](seed_code/build_app/buildspec.yml) that describes the command that will be run. For more details about this base code, refer to [seed_code/build_app/README.md](seed_code/build_app/README.md).
 
 The following resources are created in this construct:
 
-- **CodeCommit Repository**, this repository is intialised with the code defined in [seed_code/build_app](seed_code/build_app/) which was the stored in an S3 bucket when the service catalog stack was deployed. The s3 bucket name and code zip key are stored in ssm parameters: `/mlops/code/seed_bucket` and `/mlops/code/build`. The stack expects these parameters to exist in the account.
+- **CodeCommit Repository**, this repository is intialised with the code defined in [seed_code/build_app](seed_code/build_app/).
 - **CodeBuild Project**, this codebuild project is used to create/update/run the SageMaker Pipeline defined in the **build app repository** in [ml_pipelines/training/pipeline.py](seed_code/build_app/ml_pipelines/training/pipeline.py). The project's **buildspec** uses the [buildspec.yml](seed_code/build_app/buildspec.yml) defined in the repository as well.
 - **CodePipeline Pipeline**, this pipeline has the **CodeCommit Repository** created in this construct as source and monitors the commits to the **main** branch. It has one additional stage, **Build** stage, which runs the **CodeBuild Project** defined above.
 
@@ -237,106 +239,8 @@ This repository also contains some shell scripts that you can use to setup your 
 
 - If you have a mac machine with [Homebrew](https://brew.sh/) installed, you can use [scripts/install-prerequisites-brew.sh](scripts/install-prerequisites-brew.sh) to install the prerequisites and setup the python environment
 
-### Setup AWS Profiles
 
-As the MLOps foundation is based on multiple accounts, it is necessary to create a simple way to interact with multiple AWS credentials. We recommend the creation of an AWS profile per account with enough permission to deploy to CloudFormation following the instructions [here](https://docs.aws.amazon.com/toolkit-for-visual-studio/latest/user-guide/keys-profiles-credentials.html#adding-a-profile-to-the-aws-credentials-profile-file) . For example, the `.aws/credentials` should look like:
-
-```txt
-[mlops-governance]
-aws_access_key_id = YOUR_ACCESS_KEY_ID
-aws_secret_access_key = YOUR_SECRET_ACCESS_KEY
-aws_session_token = YOUR_SESSION_TOKEN  # this token is generated if you are using an IAM Role to assume into the account
-
-[mlops-dev]
-aws_access_key_id = YOUR_ACCESS_KEY_ID
-aws_secret_access_key = YOUR_SECRET_ACCESS_KEY
-aws_session_token = YOUR_SESSION_TOKEN  # this token is generated if you are using an IAM Role to assume into the account
-
-[mlops-preprod]
-...
-
-[mlops-prod]
-...
-```
-
-Before you start with the deployment of the solution make sure to bootstrap your accounts. Ensure you add the pipeline/governance account details in [mlops_sm_project_template/config/constants.py](mlops_sm_project_template/config/constants.py).
-
-```txt
-PIPELINE_ACCOUNT = ""     # account to host the pipeline handling updates of this repository
-```
-
-Additionally, for each organizational units composed of **DEV**, **PREPROD** and **PROD** accounts, create a new entry in [mlops_sm_project_template/config/accounts.json](mlops_sm_project_template/config/accounts.json)
-
-```txt
-"DEV_ACCOUNT": "",        # account to host the service catalog template and then build sagemaker project
-
-"PREPROD_ACCOUNT": "",    # account to deploy the sagemaker endpoint or other infrastructure defined by your SageMaker Projects Templates repository
-
-"PROD_ACCOUNT": "",       # account to deploy the sagemaker endpoint or other infrastructure defined by your SageMaker Project Templates deploy repository
-```
-
-### Bootstrap AWS Accounts
-
-***Warning:** It is best you setup a python environment to handle all installs for this project and manage python packages. Use your preferred terminal and editor to run the following commands.*
-
-follow the steps below to achieve that:
-
-1. Clone this repository in your work environment (e.g. your laptop)
-
-2. Change directory to `mlops-sm-project-template-rt` root
-
-```bash
-cd mlops-sm-project-template-rt
-```
-
-3. Install dependencies in a separate python environment using your favourite python packages manager. You can refer to [scripts/install-prerequisites-brew.sh](scripts/install-prerequisites-brew.sh) for commands to setup a python environment.
-
-```bash
- pip install -r requirements.txt
-```
-
-4. Run `make init` to setup githooks
-
-5. Ensure your docker daemon is running
-
-**NOTE:** If you have already bootstrapped your accounts as part of the instructions of `mlops-infra` you can skip step 6.
-
-
-6. (Option 1) Bootstrap your deployment target accounts (e.g. governance, dev, etc.) using our script in [scripts/cdk-account-setup.sh](scripts/cdk-account-setup.sh). Ensure that you have the account ids ready and the corresponding AWS profiles with credentials created in your `~/.aws/credentials` for each account (see above).
-
-The script will request the 4 accounts, i.e. governance, dev, preprod and prod, and the corresponding AWS profiles as inputs. If you want to only deploy to 1 account you can use the same id for all account variables or pass the same values in the script.
-
-6. (Option 2) If you want to bootstrap the account manually (recommended if bootstrapping across several organization units), then run the following command for each account:
-
-```bash
-cdk bootstrap aws://<target account id>/<target region> --profile <target account profile>
-```
-
-The bootstrap stack needs only to be deployed for the first time. Once deployed, the bootstrap will be updated as part of the pipeline's regular execution. You only need to deploy bootstrap into new target accounts you plan to add to the pipeline. (in case you get an error regarding CDK version not matching run the bootstrap command again after you have locally updated your cdk) for cross account deployment setup, run the following command. This is a one time operation for each target account we want to deploy.
-
-```bash
-cdk bootstrap aws://<target account id>/<target region> --trust <deployment account> --cloudformation-execution-policies <policies arn that you would allow the deployment account to use> --profile <target account profile>
-```
-
-The following is an example of the cloud formation execution policy:
-
-```bash
---cloudformation-execution-policies `'arn:aws:iam::aws:policy/AdministratorAccess'`
-```
-
-for more information read the [AWS CDK documentation on Bootstrapping](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html#bootstrapping-howto)
-
-### Deployment Options
-
-***Warning:** It is best you setup a python environment to handle all installs for this project and manage python packages. Use your preferred terminal and editor to run the following commands.*
-
-There are two deployment options for the SageMaker Project Template to the Service Catalog in the target account:
-
-- **[CI/CD Deployment of Service Catalog Stack](#cicd-deployment-of-service-catalog-stack)** - deploy by using a governance account setup and a CICD pipeline linked to this folder of the repository
-
-- **[Manual Deployment of Service Catalog Stack](#manual-deployment-of-service-catalog-stack)** - deploy without a governance account setup and directly to the targeted accounts (1 or more) using CDK commands
-
-#### CI/CD Deployment of Service Catalog Stack
+### Deployment 
 
 This step will deploy 2 stacks: [CodeCommit Stack](#codecommit-stack) and [Pipeline Stack](#pipeline-stack)
 
@@ -351,28 +255,6 @@ cdk deploy --all --profile mlops-governance
 
 2. the deployment CI/CD pipeline will now handle all deployments for the other stacks based on the updates to the main branch
 
-#### Manual Deployment of Service Catalog Stack
-
-It is possible to deploy a specific stage (in [pipeline_stack.py](mlops_sm_project_template/pipeline_stack.py) refer to classes inheriting `Stage` class from `aws_cdk`). The same is possible to a singular stack (follow the same deployment steps as the pipeline stack).  `CoreStage` is a stage defined in [pipeline_stack.py](mlops_sm_project_template/pipeline_stack.py) which contains the `ServiceCatalogStack` and is what the CI/CD pipeline deploys at every deployment stage to the target account of the stage. You can deploy this stage manually by following these steps:
-
-1. Add a custom id to the target stage in [app.py](mlops_sm_project_template/app.py)
-
-```python
-# Personal Stacks for testing locally, comment out when committing to repository
-CoreStage(
-    app,
-    "Personal",  ## change this to another stage name when doing local tests
-    env=deployment_env,
-)
-```
-
-2. Deploy the stage
-
-```bash
-cdk --app ./cdk.out/assembly-Personal deploy —all --profile mlops-dev
-```
-
-as a stage could include a combination of stacks `--all` flag is included with the `deploy` command
 
 ### Clean-up
 
