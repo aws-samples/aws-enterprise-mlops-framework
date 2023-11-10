@@ -14,10 +14,7 @@ This repository contains the resources that are required to deploy the MLOps Fou
     - [Repository Structure](#repository-structure)
     - [Setup and Customization](#setup-and-customization)
     - [Setup AWS Profiles](#setup-aws-profiles)
-    - [Bootstrap AWS Accounts](#bootstrap-aws-accounts)
-    - [Deployment Options](#deployment-options)
-    - [CI/CD Deployment](#cicd-deployment)
-    - [Manual Deployment](#manual-deployment)
+    - [Deployment](#deployment)
     - [Clean-up](#clean-up)
   - [Troubleshooting](#troubleshooting)
 
@@ -235,15 +232,8 @@ cdk_infra_app_config:
 **NOTE**: In case that both import and create network are specified, the import always takes priority. 
 
 
-### Deployment Options
+### Deployment
 
-There are two deployment options for the infrastructure to the accounts:
-
-- **[CI/CD Deployment](#cicd-deployment)** - deploy by using a governance account setup and a CICD pipeline linked to this folder of the repository
-
-- **[Manual Deployment](#manual-deployment)** - deploy without a governance account setup and directly to the targeted accounts (1 or more) using CDK commands
-
-### CI/CD Deployment
 This step will deploy 2 stacks: [CodeCommit Stack](#codecommit-stack) and [Pipeline Stack](#pipeline-stack)
 
 1. Deploy the deployment CI/CD pipeline in your governance account (one time operation). This is the CI/CD pipeline that would deploy your required infrastructure to setup your networking in the accounts and SageMaker Studio Domain in the Dev Account:
