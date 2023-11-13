@@ -26,23 +26,264 @@ aws_session_token = YOUR_SESSION_TOKEN  # this token is generated if you are usi
 
 [mlops-prod]
 ...
+
+
+
 ```
+### Setup and Customization
+First, copy the [configs file](config/cdk-app.yml.bak), removing the ```.bak``` suffix. Here you can modify the defaults - for pipeline configuration. You can configure account details in ```deployments``` section. The solution also supports multiplle account sets (ie multiple sets of dev/stg/prod)
 
-Before you start with the deployment of the solution make sure to bootstrap your accounts. Ensure you add the pipeline/governance account details in [mlops_infra/config/constants.py](mlops_infra/config/constants.py).
+Example configurations: 
 
-```python
-PIPELINE_ACCOUNT = ""     # account to host the pipeline handling updates of this repository
-```
-
-Additionally, for each organizational units composed of **DEV**, **PREPROD** and **PROD** accounts, create a new entry in [mlops_infra/config/accounts.json](mlops_infra/config/accounts.json)
+*Change defaults (eg different repository name, branch for mlops-infra and mlops-sm-project-template) with other pipeline details*
 
 ```yaml
-"DEV_ACCOUNT": "",        # account to setup sagemaker studio and networking stack
-
-"PREPROD_ACCOUNT": "",    # account to setup networking stack
-
-"PROD_ACCOUNT": "",       # account to setup networking stack
+cdk_app_config:
+  app_prefix: mlops-cdk
+  pipeline:
+    account: <YOUR AWS ACCOUNT ID>
+    region: <YOUR AWS REGION>
+    bootstrap:
+      aws_profile: <YOUR PIPELINE ACCOUNT'S AWS PROFILE NAME>
+    code_commit:
+      infra:
+        repo_name: mlops-infra
+        branch_name: main
+      project_template:
+        repo_name: mlops-sm-project-template
+        branch_name: main
 ```
+
+*Multi account - 1 account set with same region of pipeline*
+
+**NOTE**: if you want to have same region of pipeline account for your dev/stage/prod then you can leave region field of default/dev/stage/prod
+```yaml
+cdk_app_config:
+  pipeline:
+    account: <YOUR AWS ACCOUNT ID>
+    region: <YOUR AWS REGION>
+  deployments:
+    - set_name: first-example
+      stages:
+        - stage_name: dev
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR DEV ACCOUNT'S AWS PROFILE NAME>
+        - stage_name: preprod
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR PREPROD ACCOUNT'S AWS PROFILE NAME>
+        - stage_name: prod
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR PROD ACCOUNT'S AWS PROFILE NAME>
+```
+*Multi account - 2 account set with same region of pipeline*
+
+```yaml
+cdk_app_config:
+  pipeline:
+    account: <YOUR AWS ACCOUNT ID>
+    region: <YOUR AWS REGION>
+  deployments:
+    - set_name: first-example
+      stages:
+        - stage_name: dev
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR DEV ACCOUNT'S AWS PROFILE NAME>
+        - stage_name: preprod
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR PREPROD ACCOUNT'S AWS PROFILE NAME>
+        - stage_name: prod
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR PROD ACCOUNT'S AWS PROFILE NAME>
+    - set_name: second-example
+      stages:
+        - stage_name: dev
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR DEV ACCOUNT'S AWS PROFILE NAME>
+        - stage_name: preprod
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR PREPROD ACCOUNT'S AWS PROFILE NAME>
+        - stage_name: prod
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR PROD ACCOUNT'S AWS PROFILE NAME>
+```
+*Multi account - 1 account set with different region from pipeline but same region for dev/stage/prod, for example pipeline region - us-east-1, dev/stage/prod - eu-west-1*
+```yaml
+cdk_app_config:
+  app_prefix: mlops-cdk
+  pipeline:
+    account: <YOUR AWS ACCOUNT ID>
+    region: us-east-1
+    
+  deployments:
+    - set_name: first-example
+      default_region: eu-west-1
+      stages:
+        - stage_name: dev
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR DEV ACCOUNT'S AWS PROFILE NAME>
+        - stage_name: preprod
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR PREPROD ACCOUNT'S AWS PROFILE NAME>
+        - stage_name: prod
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR PROD ACCOUNT'S AWS PROFILE NAME>
+```
+
+*Multi account - 1 account set with different region from pipeline and different region for dev/stage/prod, for example pipeline region - us-east-1, dev - eu-west-1, stage - eu-west-2, prod - eu-central-1*
+```yaml
+cdk_app_config:
+  app_prefix: mlops-cdk
+  pipeline:
+    account: <YOUR AWS ACCOUNT ID>
+    region: us-east-1
+    
+  deployments:
+    - set_name: first-example
+      stages:
+        - stage_name: dev
+          account: <YOUR AWS ACCOUNT ID>
+          region: eu-west-1
+          bootstrap:
+            aws_profile: <YOUR DEV ACCOUNT'S AWS PROFILE NAME>
+        - stage_name: preprod
+          account: <YOUR AWS ACCOUNT ID>
+          region: eu-west-2
+          bootstrap:
+            aws_profile: <YOUR PREPROD ACCOUNT'S AWS PROFILE NAME>
+        - stage_name: prod
+          account: <YOUR AWS ACCOUNT ID>
+          region: eu-central-1
+          bootstrap:
+            aws_profile: <YOUR PROD ACCOUNT'S AWS PROFILE NAME>
+```
+*Before you start with the deployment of the solution make sure to bootstrap your accounts. Bootstrapping your account with default execution policy arn 'arn:aws:iam::aws:policy/AdministratorAccess'*
+
+**NOTE**: If you are using default execution policy arn 'arn:aws:iam::aws:policy/AdministratorAccess', then you don't need to do anything. An example configuration will be like below.
+```yaml
+cdk_app_config:
+  pipeline:
+    account: <YOUR AWS ACCOUNT ID>
+    region: <YOUR AWS REGION>
+    bootstrap:
+      aws_profile: <YOUR DEV ACCOUNT'S AWS PROFILE NAME>
+  deployments:
+    - set_name: first-example
+      stages:
+        - stage_name: dev
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR DEV ACCOUNT'S AWS PROFILE NAME>
+        - stage_name: preprod
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR PREPROD ACCOUNT'S AWS PROFILE NAME>
+        - stage_name: prod
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR PROD ACCOUNT'S AWS PROFILE NAME>
+```
+
+*Bootstrapping your account with existing execution policy arn*
+
+```yaml
+cdk_app_config:
+  pipeline:
+    account: <YOUR AWS ACCOUNT ID>
+    region: <YOUR AWS REGION>
+    bootstrap:
+      aws_profile: <YOUR DEV ACCOUNT'S AWS PROFILE NAME>
+      execution_policy_arn: <YOUR EXECUTION POLICY ARN>
+  deployments:
+    - set_name: first-example
+      stages:
+        - stage_name: dev
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR DEV ACCOUNT'S AWS PROFILE NAME>
+            execution_policy_arn: <YOUR EXECUTION POLICY ARN>
+        - stage_name: preprod
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR PREPROD ACCOUNT'S AWS PROFILE NAME>
+            execution_policy_arn: <YOUR EXECUTION POLICY ARN>
+        - stage_name: prod
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR PROD ACCOUNT'S AWS PROFILE NAME>
+            execution_policy_arn: <YOUR EXECUTION POLICY ARN>
+```
+
+*Bootstrapping your account by creating your own execution policy by given execution policy arn json file*
+**NOTE**: create your execution policy file with desired name in mlops-commons/mlops_commons/config and configure it as shown in below example.
+```yaml
+cdk_app_config:
+  pipeline:
+    account: <YOUR AWS ACCOUNT ID>
+    region: <YOUR AWS REGION>
+    bootstrap:
+      aws_profile: <YOUR DEV ACCOUNT'S AWS PROFILE NAME>
+      execution_policy_filepath: <YOUR EXECUTION POLICY JSON FILE PATH>
+  deployments:
+    - set_name: first-example
+      stages:
+        - stage_name: dev
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR DEV ACCOUNT'S AWS PROFILE NAME>
+            execution_policy_filepath: <YOUR EXECUTION POLICY JSON FILE PATH>
+        - stage_name: preprod
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR PREPROD ACCOUNT'S AWS PROFILE NAME>
+            execution_policy_filepath: <YOUR EXECUTION POLICY JSON FILE PATH>
+        - stage_name: prod
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR PROD ACCOUNT'S AWS PROFILE NAME>
+            execution_policy_filepath: <YOUR EXECUTION POLICY JSON FILE PATH>
+```
+
+
+*Bootstrapping your account by creating your own execution policy by given execution policy arn json file*
+**NOTE**: By default it looks for execution policy in folder mlops-commons/mlops_commons/config by file name by 'execution_policy_AWS-ACCOUNT-ID_AWS-REGION.json'. if you are using default execution file name, then you don't need to do anything extra. Below configuration as example.
+```yaml
+cdk_app_config:
+  pipeline:
+    account: <YOUR AWS ACCOUNT ID>
+    region: <YOUR AWS REGION>
+    bootstrap:
+      aws_profile: <YOUR DEV ACCOUNT'S AWS PROFILE NAME>
+  deployments:
+    - set_name: first-example
+      stages:
+        - stage_name: dev
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR DEV ACCOUNT'S AWS PROFILE NAME>
+        - stage_name: preprod
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR PREPROD ACCOUNT'S AWS PROFILE NAME>
+        - stage_name: prod
+          account: <YOUR AWS ACCOUNT ID>
+          bootstrap:
+            aws_profile: <YOUR PROD ACCOUNT'S AWS PROFILE NAME>
+```
+
+
+
 
 ### Bootstrap AWS Accounts
 
