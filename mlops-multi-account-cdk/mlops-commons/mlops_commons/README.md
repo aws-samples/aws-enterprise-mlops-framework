@@ -1,10 +1,12 @@
-# THIS NEEDS UPDATING TO REFLECT NEW SETUP
 
 ## Solution Setup
-- Mention configuring cdk-app.yml including examples
-- Account set specific configs (sh commands etc)
-- Include section for manual bootstrap ( move from the infra readme here)
-- Include examples of configs
+- AWS Profiles
+- Configuration using config file cdk-app.yml
+- Pipeline configuration
+- Account set specific configurations 
+- Bootstrap using execution policy
+- Using convenient script for local setup & Bootstrap
+- Manual Bootstrap
 
 ### Setup AWS Profiles
 
@@ -30,12 +32,93 @@ aws_session_token = YOUR_SESSION_TOKEN  # this token is generated if you are usi
 
 
 ```
-### Setup and Customization
+### Configuration using `cdk-app.yml`
 First, copy the [configs file](config/cdk-app.yml.bak), removing the ```.bak``` suffix. Here you can modify the defaults - for pipeline configuration. You can configure account details in ```deployments``` section. The solution also supports multiplle account sets (ie multiple sets of dev/stg/prod)
 
-Example configurations: 
+Sample configuration for reference with different config options: 
+```yaml
+cdk_app_config:
+  app_prefix:   # optional, default to mlops-cdk
+  pipeline:
+    account:  # mandatory
+    region:   # mandatory
+    bootstrap:
+      enabled:    # optional, default True
+      execution_policy_filepath: # optional, default to look for a file name in mlops_commons/config/execution_policy_AWS-ACCOUNT-ID_AWS-REGION.json
+      execution_policy_arn: # optional, default to 'arn:aws:iam::aws:policy/AdministratorAccess', this will only be used when there is no value provided to 'execution_policy_filepath'
+      aws_profile: # optional, default to profile name by cdk_AWS-ACCOUNT-ID_AWS-REGION
+    code_commit:
+      infra:
+        repo_name:   # optional, default to mlops-infra
+        branch_name: # optional, default to main
+      project_template:
+        repo_name:   # optional, default to mlops-sm-project-template
+        branch_name: # optional, default to main
 
-*Change defaults (eg different repository name, branch for mlops-infra and mlops-sm-project-template) with other pipeline details*
+  deployments:
+    - set_name: first-example # mandatory
+      enabled: # optional, default True
+      default_region: # optional, default to environment pipeline region
+      stages:
+        - stage_name: dev # mandatory value must be dev
+          account:        # mandatory
+          region:         # optional, default to value of 'default_region'
+          enabled:        # optional, default True
+          bootstrap:
+            enabled:      # optional, default True
+            execution_policy_filepath: # optional, default to look for a file name in mlops_commons/config/execution_policy_AWS-ACCOUNT-ID_AWS-REGION.json
+            execution_policy_arn:      # optional, default to 'arn:aws:iam::aws:policy/AdministratorAccess', this will only be used when there is no value provided to 'execution_policy_filepath'
+            aws_profile:               # optional, default to profile name by cdk_AWS-ACCOUNT-ID_AWS-REGION
+        - stage_name: preprod  # mandatory value must be preprod
+          account:        # mandatory
+          region:         # optional, default to value of 'default_region'
+          enabled:        # optional, default True
+          bootstrap:
+            enabled:      # optional, default True
+            execution_policy_filepath: # optional, default to look for a file name in mlops_commons/config/execution_policy_AWS-ACCOUNT-ID_AWS-REGION.json
+            execution_policy_arn:      # optional, default to 'arn:aws:iam::aws:policy/AdministratorAccess', this will only be used when there is no value provided to 'execution_policy_filepath'
+            aws_profile:               # optional, default to profile name by cdk_AWS-ACCOUNT-ID_AWS-REGION
+
+        - stage_name: prod # mandatory value must be prod
+          account:         # mandatory
+          region:          # optional, default to value of 'default_region'
+          enabled:         # optional, default True
+          bootstrap:
+            enabled:       # optional, default True
+            execution_policy_filepath: # optional, default to look for a file name in mlops_commons/config/execution_policy_AWS-ACCOUNT-ID_AWS-REGION.json
+            execution_policy_arn:      # optional, default to 'arn:aws:iam::aws:policy/AdministratorAccess', this will only be used when there is no value provided to 'execution_policy_filepath'
+            aws_profile:               # optional, default to profile name by cdk_AWS-ACCOUNT-ID_AWS-REGION
+
+
+
+    - set_name: second-example
+      stages:
+        - stage_name: dev
+          account: xxxxxxxxxxxx
+          bootstrap:
+            aws_profile: profile_name
+        - stage_name: preprod
+          account: xxxxxxxxxxxx
+          bootstrap:
+            aws_profile: profile_name
+        - stage_name: prod
+          account: xxxxxxxxxxxx
+          bootstrap:
+            aws_profile: profile_name
+
+    - set_name: third-example
+      stages:
+        - stage_name: dev
+          account: xxxxxxxxxxxx
+        - stage_name: preprod
+          account: xxxxxxxxxxxx
+        - stage_name: prod
+          account: xxxxxxxxxxxx
+
+
+```
+### Pipeline configuration
+*Below is pipeline configuration with default configuration. Change defaults (eg different repository name, branch for mlops-infra and mlops-sm-project-template) with other pipeline details*
 
 ```yaml
 cdk_app_config:
@@ -53,6 +136,7 @@ cdk_app_config:
         repo_name: mlops-sm-project-template
         branch_name: main
 ```
+### Account set specific configurations
 
 *Multi account - 1 account set with same region of pipeline*
 
@@ -168,6 +252,9 @@ cdk_app_config:
           bootstrap:
             aws_profile: <YOUR PROD ACCOUNT'S AWS PROFILE NAME>
 ```
+
+### Bootstrap using execution policy
+
 *Before you start with the deployment of the solution make sure to bootstrap your accounts. Bootstrapping your account with default execution policy arn 'arn:aws:iam::aws:policy/AdministratorAccess'*
 
 **NOTE**: If you are using default execution policy arn 'arn:aws:iam::aws:policy/AdministratorAccess', then you don't need to do anything. An example configuration will be like below.
@@ -282,10 +369,31 @@ cdk_app_config:
             aws_profile: <YOUR PROD ACCOUNT'S AWS PROFILE NAME>
 ```
 
+### Using convenient script for local setup & Bootstrap
+For setting up your local environment for required software like python, nodejs, python modules, docker etc.., bootstrapping aws accounts and building of deploying cdk application, there are few convenient scripts with cli commands.
+In the root folder i.e. mlops-multi-account-cdk, there is script `mlops-multi-account.sh`. This script is currently compatible with operating system like MacOS, AmazonLinux, Redhat, Ubuntu, Debian. 
+```bash
+# for installing installing virtual python, nodejs, docker, required python modules using requiremnts.txt of mlops-infra & mlops-sm-project-template and bootstrapping accounts configured in mlops-commons/mlops_commons/config/cdk-app.yml
+./mlops-multi-account.sh setup
 
+# For synthesizing mlops-infra project
+./mlops-multi-account.sh infra synth
 
+# For deploy mlops-infra project
+./mlops-multi-account.sh infra deploy --all
 
-### Bootstrap AWS Accounts
+# For synthesizing mlops-sm-project-template project
+./mlops-multi-account.sh template synth
+
+# For deploy mlops-sm-project-template project
+./mlops-multi-account.sh template deploy --all
+
+# Here infra represents mlops-infra project & template represents mlops-sm-project-template. After this project name, you can use any cdk cli arguments like below
+# suppose you want to deploy using auto approval
+./mlops-multi-account.sh infra deploy --all --require-approval never
+```
+
+### Manual Bootstrap of AWS Accounts
 
 ***Warning:** It is best you setup a python environment to handle all installs for this project and manage python packages. Use your preferred terminal and editor to run the following commands.*
 
