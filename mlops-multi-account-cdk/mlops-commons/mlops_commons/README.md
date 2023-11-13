@@ -391,6 +391,13 @@ In the root folder i.e. mlops-multi-account-cdk, there is script `mlops-multi-ac
 # Here infra represents mlops-infra project & template represents mlops-sm-project-template. After this project name, you can use any cdk cli arguments like below
 # suppose you want to deploy using auto approval
 ./mlops-multi-account.sh infra deploy --all --require-approval never
+
+# To run make clean/init
+./mlops-multi-account.sh infra init
+./mlops-multi-account.sh infra clean
+./mlops-multi-account.sh template init
+./mlops-multi-account.sh template clean
+
 ```
 
 ### Manual Bootstrap of AWS Accounts

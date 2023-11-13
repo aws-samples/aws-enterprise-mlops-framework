@@ -223,14 +223,17 @@ if you are using a mac or a linux machine that supports `make` commands, you wil
 - use `make init` to setup githooks to manage commit for this repository. This will add some helper functionalities when ever you run `git commit` to format the code, add necessary headers, and also clears any jupyter notebooks.
 - use `make clean` to clear out the repo from python specific cached resources.
 
-This repository also contains some shell scripts that you can use to setup your machine and aws accounts:
+**Important** : First, follow the mandatory setup using [README](./../mlops-commons/mlops_commons/README.md) from `mlops-commons/mlops_commons/README.md`. Once it is done then if you don't want to use convenient scripts in mlops-commons then
+this repository also contains some shell scripts that you can use to setup your machine and aws accounts:
 
-- If you have a mac machine with [Homebrew](https://brew.sh/) installed, you can use [scripts/install-prerequisites-brew.sh](scripts/install-prerequisites-brew.sh) to install the prerequisites and setup the python environment
+- If you have a mac machine with [Homebrew](https://brew.sh/) installed, you can use [scripts/project-setup.sh](scripts/project-setup.sh) to install the prerequisites and setup the python environment
 
 
 ### Deployment 
 
 This step will deploy 2 stacks: [CodeCommit Stack](#codecommit-stack) and [Pipeline Stack](#pipeline-stack)
+
+For deployment, you can also use convenient scripts, please read [README](../mlops-commons/README.md) `mlops-commons/mlops_commons/README.md` or follow the below manual steps.
 
 1. Deploy the deployment CI/CD pipeline in your governance account (one time operation). This is the CI/CD pipeline that would deploy your project template to Service Catalog in your dev account for the data science team to use:
 

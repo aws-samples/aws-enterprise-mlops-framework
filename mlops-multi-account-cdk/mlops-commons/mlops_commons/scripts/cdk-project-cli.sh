@@ -77,6 +77,13 @@ execute_cdk_command() {
     cdk "${@:2}" --profile "$governance_profile"
 }
 
+execute_make_command(){
+  make_cmd="${@:1}"
+  echo "Executing make command : $make_cmd"
+  cd "$PROJECT_SCRIPT_PATH/../" || exit
+  make "$make_cmd"
+}
+
 start_project_setup() {
   # preparing account for cdk application
   project_base_path="$1"
@@ -100,6 +107,9 @@ run_project_cli(){
       ;;
     synth|deploy|destroy)
       execute_cdk_command "$CLI_SCRIPT_PATH" "${@:2}"
+      ;;
+    init|clean)
+      execute_make_command "${@:2}"
       ;;
     *)
       echo "Not supported command : $cmd!!!, Supported commands : [setup, synth, deploy, destroy]"

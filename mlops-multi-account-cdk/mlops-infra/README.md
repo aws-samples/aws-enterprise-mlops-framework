@@ -152,7 +152,8 @@ This repository also contains some shell scripts that you can use to setup your 
 * If you have a mac machine with [Homebrew](https://brew.sh/) installed, you can use [scripts/install-prerequisites-brew.sh](../mlops-commons/mlops_commons/scripts/install-prerequisites-brew.sh) to install the prerequisites and setup the python environment
 
 ### Setup and Customization
-First, copy the [configs file](config/cdk-infra-app.yml.bak), removing the ```.bak``` suffix. Here you can modify the defaults - which create a VPC and related resources. Or you can provide your pre-existing VPC and resources, by changing the ```deployments``` section, including the ```import_network``` section. The solution also supports multiplle account sets (ie multiple sets of dev/stg/prod) by including multiple entries in the ```deployments``` section.
+First, follow the mandatory setup using [README](./../mlops-commons/mlops_commons/README.md) from `mlops-commons/mlops_commons/README.md`. Once it is done then
+for mlops-infra specific configuration, copy the [configs file](config/cdk-infra-app.yml.bak), removing the ```.bak``` suffix. Here you can modify the defaults - which create a VPC and related resources. Or you can provide your pre-existing VPC and resources, by changing the ```deployments``` section, including the ```import_network``` section. The solution also supports multiplle account sets (ie multiple sets of dev/stg/prod) by including multiple entries in the ```deployments``` section.
 
 **Note**: Not creating a ```cdk-infra-app.yml``` will automatically implement the defautls. 
 
