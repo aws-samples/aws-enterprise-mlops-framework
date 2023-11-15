@@ -153,11 +153,11 @@ class DeployPipelineConstruct(Construct):
                 value=project_name
             )
         })
-        environment_variables.update({
-            "INFRA_SET_NAME": codebuild.BuildEnvironmentVariable(
-                value=os.getenv("infra_set_name", 'default')
-            )
-        })
+        # environment_variables.update({
+        #     "INFRA_SET_NAME": codebuild.BuildEnvironmentVariable(
+        #         value=os.getenv("infra_set_name", 'default')
+        #     )
+        # })
 
         environment_variables.update({
             "MODEL_BUCKET_ARN": codebuild.BuildEnvironmentVariable(value=model_bucket_arn)

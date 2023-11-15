@@ -26,7 +26,6 @@ from .cdk_deploy_app_config import (
     DeployAppConfig,
     CdkDeployAppConfig, ProductionVariantConfig
 )
-from .constants import INFRA_SET_NAME
 
 
 class ConfigHelper(object):
@@ -66,7 +65,4 @@ class ConfigHelper(object):
         return ConfigHelper().app_config.cdk_deploy_app_config
 
     def get_config_by(self, stage_name: str) -> ProductionVariantConfig:
-        return self.app_config.cdk_deploy_app_config.get_product_variant_by(
-            set_name=INFRA_SET_NAME,
-            stage_name=stage_name
-        )
+        return self.app_config.cdk_deploy_app_config.get_product_variant_by(stage_name=stage_name)

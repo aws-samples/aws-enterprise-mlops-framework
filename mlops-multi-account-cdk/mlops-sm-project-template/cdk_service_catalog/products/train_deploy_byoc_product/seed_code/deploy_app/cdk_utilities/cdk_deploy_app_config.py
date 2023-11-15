@@ -47,7 +47,6 @@ class DeploymentStageConfig(DataClassJsonMixin):
 
 @dataclass
 class DeploymentConfig(DataClassJsonMixin):
-    set_name: str
     stages: Optional[List[DeploymentStageConfig]] = field(default=None)
 
     def get_product_variant_by(self, stage_name: str) -> Optional[ProductionVariantConfig]:
@@ -62,29 +61,24 @@ class CdkDeployAppConfig(DataClassJsonMixin):
 
     @staticmethod
     def get_default_deployments():
-        return [DeploymentConfig(
-            set_name=DEFAULT_VALUE,
-            stages=[DeploymentStageConfig(stage_name=DEFAULT_VALUE)]
-        )]
+        return DeploymentConfig(stages=[DeploymentStageConfig(stage_name=DEFAULT_VALUE)])
 
     default_production_variant: DefaultProductionVariantConfig = field(default_factory=DefaultProductionVariantConfig)
-    deployments: Optional[List[DeploymentConfig]] = field(
+    deployments: Optional[DeploymentConfig] = field(
         default_factory=lambda: CdkDeployAppConfig.get_default_deployments()
     )
 
-    def get_product_variant_by(self, set_name: str, stage_name: str) -> Optional[ProductionVariantConfig]:
+    def get_product_variant_by(self, stage_name: str) -> Optional[ProductionVariantConfig]:
 
-        conf = list(
-            filter(lambda x: str(x.set_name).strip().lower() == set_name.strip().lower(), self.deployments)
-        )
+        conf = self.deployments
 
         # if cdk infra app configuration is not available for given
         # set name and stage name then use default configuration
-        if conf is None or len(conf) == 0:
+        if conf is None:
             conf = self.get_default_deployments()
             stage_name = DEFAULT_VALUE
 
-        response = conf[0].get_product_variant_by(stage_name=stage_name)
+        response = conf.get_product_variant_by(stage_name=stage_name)
 
         # updating production_variant value with updated default_production_variant value in case where
         # production_variant doesn't have any or some of the attributes from config

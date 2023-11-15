@@ -183,7 +183,8 @@ class SageMakerServiceCatalog(Stack):
                 effect=iam.Effect.ALLOW,
                 resources=[
                     "*"
-                    # TODO lock this policy to only certain roles from the other account that are used for deploying the solution as defined in templates/pipeline_constructs/deploy_pipeline_stack.py
+                    # TODO lock this policy to only certain roles from the other account that are used for deploying
+                    #  the solution as defined in products/constructs/deploy_pipeline.py
                 ],
             ),
         )

@@ -22,43 +22,22 @@ cdk_deploy_app_config:
     instance_type: "ml.g4dn.2xlarge"
     variant_name: "AllTraffic"
   deployments:
-    - set_name: first-example
-      stages:
-        - stage_name: dev
-          production_variant:
-            initial_instance_count: 1
-            initial_variant_weight: 1
-            instance_type: "ml.g4dn.2xlarge"
-            variant_name: "AllTraffic"
-        - stage_name: preprod
-          production_variant:
-            initial_instance_count: 1
-            initial_variant_weight: 1
-            instance_type: "ml.g4dn.2xlarge"
-            variant_name: "AllTraffic"
-        - stage_name: prod
-          production_variant:
-            initial_instance_count: 1
-            initial_variant_weight: 1
-            instance_type: "ml.g4dn.2xlarge"
-            variant_name: "AllTraffic"
-    - set_name: second-example
-      stages:
-        - stage_name: dev
-          production_variant:
-            initial_instance_count: 1
-            initial_variant_weight: 1
-            instance_type: "ml.g4dn.2xlarge"
-            variant_name: "AllTraffic"
-        - stage_name: preprod
-          production_variant:
-            initial_instance_count: 1
-            initial_variant_weight: 1
-            instance_type: "ml.g4dn.2xlarge"
-            variant_name: "AllTraffic"
-        - stage_name: prod
-          production_variant:
-            initial_instance_count: 1
-            initial_variant_weight: 1
-            instance_type: "ml.g4dn.2xlarge"
-            variant_name: "AllTraffic"
+    stages:
+      - stage_name: dev
+        production_variant:
+          initial_instance_count: 1
+          initial_variant_weight: 1
+          instance_type: "ml.g4dn.2xlarge"
+          variant_name: "AllTraffic"
+      - stage_name: preprod
+        production_variant:
+          initial_instance_count: 1
+          initial_variant_weight: 1
+          instance_type: "ml.g4dn.2xlarge"
+          variant_name: "AllTraffic"
+      - stage_name: prod
+        production_variant:
+          initial_instance_count: 1
+          initial_variant_weight: 1
+          instance_type: "ml.g4dn.2xlarge"
+          variant_name: "AllTraffic"
