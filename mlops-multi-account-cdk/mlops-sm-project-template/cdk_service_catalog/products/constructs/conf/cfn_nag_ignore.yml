@@ -3,5 +3,3 @@ RulesToSuppress:
     reason: "W58 is an warning raised due to Lambda functions require permission to write CloudWatch Logs, although the 
       lambda role contains the policy that support these permissions cgn_nag continues to through this problem
       (https://github.com/stelligent/cfn_nag/issues/422)"
-  - id: "W1200"
-    reason: "W1200 is an warning raised due to using ec2 instance with nvme ssd"

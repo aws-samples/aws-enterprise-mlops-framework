@@ -1,11 +1,13 @@
 version: 0.2
-
+env:
+  shell: bash
 phases:
   install:
     runtime-versions:
       python: 3.11
     commands:
       - pip install --upgrade --force-reinstall "awscli>1.20.30"
+      - if [[ -f ./config/cfn_nag_ignore.yml ]]; then cp ./config/cfn_nag_ignore.yml ./cdk.out/ ; fi
 
   build:
     commands:
