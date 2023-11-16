@@ -172,12 +172,28 @@ class DeployPipelineConstruct(Construct):
                 "ECR_REPO_ARN": codebuild.BuildEnvironmentVariable(value=ecr_repo_arn)
             })
 
+        mandatory_cfn_nag_ignore_env_name: str = 'mandatory_cfn_nag_ignore'
+        merged_cfn_nag_file_name: str = 'merged_cfn_nag_ignore.yml'
+
+        cfn_nag_ignore_python_fn = self.create_python_fn_cfn_nag_yaml_merge(
+            mandatory_nag_env_name=mandatory_cfn_nag_ignore_env_name,
+            product_specific_cfn_nag_filepath='./config/cfn_nag_ignore.yml',
+            # this file will be in Cfn nag codepipeline stage
+            out_file_name=merged_cfn_nag_file_name
+        )
+
+        self.logger.info(f'cfn_nag_ignore_python_fn -> {cfn_nag_ignore_python_fn}')
+
+        cfn_nag_mandatory_yml_b64: str = YamlHelper.encode_file_as_base64_string(
+            f'{base_dir}{os.path.sep}conf{os.path.sep}cfn_nag_ignore.yml'
+        )
+
         default_deploy_build_spec_env_name: str = 'default_deploy_build_spec'
 
         build_spec_python_fn = self.create_python_fn_deploy_build_spec_update(
             default_build_spec_env_name=default_deploy_build_spec_env_name,
             product_specific_build_spec_filepath='./buildspec.yml',  # this file will be in Cfn Prepare Synth action
-            command='if [ -f ./config/cfn_nag_ignore.yml ]; then cp ./config/cfn_nag_ignore.yml ./cdk.out/ ; fi'
+            command=f'cp ./{merged_cfn_nag_file_name} ./cdk.out/'
         )
 
         self.logger.info(f'build_spec_python_fn -> {build_spec_python_fn}')
@@ -196,7 +212,8 @@ class DeployPipelineConstruct(Construct):
                     "env": {
                         "shell": "bash",
                         "variables": {
-                            f"{default_deploy_build_spec_env_name}": f'{default_deploy_build_spec_yml_b64}'
+                            f"{default_deploy_build_spec_env_name}": f'{default_deploy_build_spec_yml_b64}',
+                            f"{mandatory_cfn_nag_ignore_env_name}": f'{cfn_nag_mandatory_yml_b64}'
                         },
                     },
                     "phases": {
@@ -205,7 +222,10 @@ class DeployPipelineConstruct(Construct):
                         },
                         "build": {
                             "commands": [
+                                f"python -c '{cfn_nag_ignore_python_fn}'",
                                 f"python -c '{build_spec_python_fn}'",
+                                'ls -lrt',
+                                'cat ./buildspec.yml'
                             ]
                         },
                     },
@@ -232,21 +252,6 @@ class DeployPipelineConstruct(Construct):
             ),
         )
 
-        mandatory_cfn_nag_ignore_env_name: str = 'mandatory_cfn_nag_ignore'
-        merged_cfn_nag_file_name: str = 'merged_cfn_nag_ignore.yml'
-
-        cfn_nag_ignore_python_fn = self.create_python_fn_cfn_nag_yaml_merge(
-            mandatory_nag_env_name=mandatory_cfn_nag_ignore_env_name,
-            product_specific_cfn_nag_filepath='./cfn_nag_ignore.yml',  # this file will be in Cfn nag codepipeline stage
-            out_file_name=merged_cfn_nag_file_name
-        )
-
-        self.logger.info(f'cfn_nag_ignore_python_fn -> {cfn_nag_ignore_python_fn}')
-
-        cfn_nag_mandatory_yml_b64: str = YamlHelper.encode_file_as_base64_string(
-            f'{base_dir}{os.path.sep}conf{os.path.sep}cfn_nag_ignore.yml'
-        )
-
         # code build to include security scan over cloudformation template
         security_scan = codebuild.Project(
             self,
@@ -259,7 +264,6 @@ class DeployPipelineConstruct(Construct):
                         "variables": {
                             "TemplateFolder": "./*.template.json",
                             "FAIL_BUILD": "true",
-                            f"{mandatory_cfn_nag_ignore_env_name}": f'{cfn_nag_mandatory_yml_b64}'
                         },
                     },
                     "phases": {
@@ -275,7 +279,6 @@ class DeployPipelineConstruct(Construct):
                         "build": {
                             "commands": [
                                 "echo Starting cfn scanning `date` in `pwd`",
-                                f"python -c '{cfn_nag_ignore_python_fn}'",
                                 'mkdir report || echo "dir report exists"',
                                 'ls -lrt',
                                 f"SCAN_RESULT=$(cfn_nag_scan --fail-on-warnings "

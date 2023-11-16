@@ -21,23 +21,23 @@ cdk_deploy_app_config:
     initial_variant_weight: 1
     instance_type: "ml.m5.large"
     variant_name: "AllTraffic"
-  deployments:
-    stages:
-      - stage_name: dev
-        production_variant:
-          initial_instance_count: 1
-          initial_variant_weight: 1
-          instance_type: "ml.g4dn.2xlarge"
-          variant_name: "AllTraffic"
-      - stage_name: preprod
-        production_variant:
-          initial_instance_count: 1
-          initial_variant_weight: 1
-          instance_type: "ml.g4dn.2xlarge"
-          variant_name: "AllTraffic"
-      - stage_name: prod
-        production_variant:
-          initial_instance_count: 1
-          initial_variant_weight: 1
-          instance_type: "ml.g4dn.2xlarge"
-          variant_name: "AllTraffic"
+#  deployments:
+#    stages:
+#      - stage_name: dev
+#        production_variant:
+#          initial_instance_count: 1
+#          initial_variant_weight: 1
+#          instance_type: "ml.g4dn.2xlarge"
+#          variant_name: "AllTraffic"
+#      - stage_name: preprod
+#        production_variant:
+#          initial_instance_count: 1
+#          initial_variant_weight: 1
+#          instance_type: "ml.g4dn.2xlarge"
+#          variant_name: "AllTraffic"
+#      - stage_name: prod
+#        production_variant:
+#          initial_instance_count: 1
+#          initial_variant_weight: 1
+#          instance_type: "ml.g4dn.2xlarge"
+#          variant_name: "AllTraffic"
