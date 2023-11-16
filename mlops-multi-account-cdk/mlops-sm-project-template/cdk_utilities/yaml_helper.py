@@ -51,9 +51,9 @@ class YamlHelper(object):
         return merged_yaml
 
     @classmethod
-    def write_yaml(cls, merged_yaml, output_file_path):
+    def write_yaml(cls, yml, output_file_path):
         with open(output_file_path, 'w') as outfile:
-            yaml.dump(merged_yaml, outfile, default_flow_style=False)
+            yaml.dump(yml, outfile, default_flow_style=False, sort_keys=False)
         return output_file_path
 
     @classmethod

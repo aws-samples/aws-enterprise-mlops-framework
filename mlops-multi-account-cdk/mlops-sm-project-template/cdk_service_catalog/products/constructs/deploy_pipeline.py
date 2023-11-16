@@ -153,11 +153,6 @@ class DeployPipelineConstruct(Construct):
                 value=project_name
             )
         })
-        # environment_variables.update({
-        #     "INFRA_SET_NAME": codebuild.BuildEnvironmentVariable(
-        #         value=os.getenv("infra_set_name", 'default')
-        #     )
-        # })
 
         environment_variables.update({
             "MODEL_BUCKET_ARN": codebuild.BuildEnvironmentVariable(value=model_bucket_arn)
@@ -176,6 +171,55 @@ class DeployPipelineConstruct(Construct):
             environment_variables.update({
                 "ECR_REPO_ARN": codebuild.BuildEnvironmentVariable(value=ecr_repo_arn)
             })
+
+        default_deploy_build_spec_env_name: str = 'default_deploy_build_spec'
+
+        build_spec_python_fn = self.create_python_fn_deploy_build_spec_update(
+            default_build_spec_env_name=default_deploy_build_spec_env_name,
+            product_specific_build_spec_filepath='./buildspec.yml',  # this file will be in Cfn Prepare Synth action
+            command='if [ -f ./config/cfn_nag_ignore.yml ]; then cp ./config/cfn_nag_ignore.yml ./cdk.out/ ; fi'
+        )
+
+        self.logger.info(f'build_spec_python_fn -> {build_spec_python_fn}')
+
+        default_deploy_build_spec_yml_b64: str = YamlHelper.encode_file_as_base64_string(
+            f'{base_dir}{os.path.sep}conf{os.path.sep}default_deploy_buildspec.yml'
+        )
+
+        cdk_prepare_synth_build = codebuild.PipelineProject(
+            self,
+            "CDKPrepareSynthBuild",
+            role=cdk_synth_build_role,
+            build_spec=codebuild.BuildSpec.from_object(
+                {
+                    "version": 0.2,
+                    "env": {
+                        "shell": "bash",
+                        "variables": {
+                            f"{default_deploy_build_spec_env_name}": f'{default_deploy_build_spec_yml_b64}'
+                        },
+                    },
+                    "phases": {
+                        "install": {
+                            "runtime-versions": {"python": 3.11},
+                        },
+                        "build": {
+                            "commands": [
+                                f"python -c '{build_spec_python_fn}'",
+                            ]
+                        },
+                    },
+                    "artifacts": {
+                        "base-directory": ".",
+                        "files": "**/*"
+                    },
+                }
+            ),
+            environment=codebuild.BuildEnvironment(
+                build_image=build_image,
+                environment_variables=environment_variables,
+            ),
+        )
 
         cdk_synth_build = codebuild.PipelineProject(
             self,
@@ -255,6 +299,7 @@ class DeployPipelineConstruct(Construct):
         )
 
         source_artifact = codepipeline.Artifact(artifact_name="GitSource")
+        cdk_prepare_synth_artifact = codepipeline.Artifact(artifact_name="CDKPrepareSynth")
         cdk_synth_artifact = codepipeline.Artifact(artifact_name="CDKSynth")
         cfn_nag_artifact = codepipeline.Artifact(artifact_name="CfnNagScanReport")
 
@@ -282,8 +327,19 @@ class DeployPipelineConstruct(Construct):
 
         build_stage.add_action(
             codepipeline_actions.CodeBuildAction(
-                action_name="Synth",
+                run_order=1,
+                action_name="Prepare_Synth",
                 input=source_artifact,
+                outputs=[cdk_prepare_synth_artifact],
+                project=cdk_prepare_synth_build,
+            )
+        )
+
+        build_stage.add_action(
+            codepipeline_actions.CodeBuildAction(
+                run_order=2,
+                action_name="Synth",
+                input=cdk_prepare_synth_artifact,
                 outputs=[cdk_synth_artifact],
                 project=cdk_synth_build,
             )
@@ -409,3 +465,34 @@ class DeployPipelineConstruct(Construct):
                                         f'yaml.dump(m_yml, open("{out_file_name}", "w"), ' \
                                         f'default_flow_style=False)'
         return cfn_nag_ignore_python_fn
+
+    def create_python_fn_deploy_build_spec_update(self, default_build_spec_env_name: str,
+                                                  product_specific_build_spec_filepath: str, command: str) -> str:
+
+        self.logger.info(f'default_buildspec_env_name: {default_build_spec_env_name}, '
+                         f'product_specific_buildspec_filepath: {product_specific_build_spec_filepath}, '
+                         f'command : {command}')
+
+        build_spec_python_fn: str = f'command="{command}";' \
+                                    f'bs_yml="{product_specific_build_spec_filepath}";' \
+                                    f'import os;' \
+                                    f'import yaml;' \
+                                    f'from base64 import b64decode;' \
+                                    f'm_yml_str=b64decode(os.getenv("{default_build_spec_env_name}")).decode("utf-8");' \
+                                    f'm_yml = yaml.safe_load(m_yml_str); ' \
+                                    f'os.path.exists(bs_yml) is False and ' \
+                                    f'yaml.dump(m_yml, open(bs_yml, "w"), default_flow_style=False, sort_keys=False); ' \
+                                    f'bs=yaml.safe_load(open(bs_yml, 'r')); ' \
+                                    r'print(bs); ' \
+                                    r'phases = bs.get("phases", None); ' \
+                                    r'phases is None and bs.update({"phases": {}}); ' \
+                                    r'phases = bs.get("phases", None); ' \
+                                    r'post_build=phases.get("post_build", None); ' \
+                                    r'post_build is None and phases.update({"post_build": {}}); ' \
+                                    r'post_build=phases.get("post_build", None);  ' \
+                                    r'commands=post_build.get("commands", None); ' \
+                                    r'commands is None and post_build.update({"commands":[]});  ' \
+                                    r'commands=post_build.get("commands", None); ' \
+                                    r'commands.append(command); ' \
+                                    r'yaml.dump(bs, open(bs_yml, "w"), default_flow_style=False, sort_keys=False);'
+        return build_spec_python_fn
