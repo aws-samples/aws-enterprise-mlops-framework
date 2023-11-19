@@ -24,7 +24,7 @@ import argparse
 from logging import Logger
 from pathlib import Path
 from typing import Optional, Any
-
+import random
 from mlops_commons.utilities.cdk_app_config import (
     AppConfig,
     CdkAppConfig
@@ -79,7 +79,7 @@ class ConfigHelper(object):
     def create_config_file(cls) -> None:
 
         args = cls.parse_cli_args()
-        print(f'config args : {args}')
+        print(f'config values : {args}')
 
         conf_dict = {
             'cdk_app_config': {
@@ -134,9 +134,11 @@ class ConfigHelper(object):
             cls.CONFIG_YAML_FILE_NAME
         )
 
-        if os.path.exists(yaml_config_path) is False:
-            with open(yaml_config_path, 'w', encoding='utf-8') as yml_stream:
-                yaml.dump(conf_dict, yml_stream, default_flow_style=False, sort_keys=False)
+        if os.path.exists(yaml_config_path):
+            os.rename(yaml_config_path, f'{yaml_config_path}_{random.randint(1, 999)}_.bak')
+        with open(yaml_config_path, 'w', encoding='utf-8') as yml_stream:
+            yaml.dump(conf_dict, yml_stream, default_flow_style=False, sort_keys=False)
+        print(f'Config file created successfully at : {yaml_config_path}')
 
     @staticmethod
     def parse_cli_args() -> Any:
