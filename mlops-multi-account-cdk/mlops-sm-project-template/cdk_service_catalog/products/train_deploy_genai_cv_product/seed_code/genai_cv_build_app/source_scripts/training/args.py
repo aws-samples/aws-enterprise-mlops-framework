@@ -1,15 +1,53 @@
-import argparse
 import os
-
+import argparse
+from typing import Optional
+from typing import Union
 from constants import constants
-from sagemaker_jumpstart_script_utilities import args_utils
+
+LOW_TRUE_STR = "true"
+LOW_FALSE_STR = "false"
+NONE_STR = "None"
+
+
+def str2bool(v: str) -> bool:
+    """Convert string argument to a boolean value."""
+    if v.lower() == LOW_TRUE_STR:
+        return True
+    elif v.lower() == LOW_FALSE_STR:
+        return False
+    else:
+        raise argparse.ArgumentTypeError("Boolean value expected.")
+
+
+def str2optionalint(v: str) -> Optional[int]:
+    """Convert string argument to optional int."""
+    if v == NONE_STR:
+        return None
+    else:
+        try:
+            return int(v)
+        except Exception as e:
+            raise argparse.ArgumentTypeError(f"Integer or None expected. Error: {e}.")
+
+
+def str2optionalstr(v: str) -> Optional[str]:
+    """Convert a string argument to optional string argument."""
+    if v == NONE_STR:
+        return None
+    elif isinstance(v, str):
+        return v
+    else:
+        raise argparse.ArgumentTypeError("None or string value expected.")
 
 
 def _parse_args():
     parser = argparse.ArgumentParser()
-    
-    parser.add_argument("--model_dir", type=str, default=os.environ["SM_MODEL_DIR"], help="Directory inside the container where the final model will be saved.")
-    parser.add_argument("--output_data_dir", type=str, default=os.environ["SM_OUTPUT_DATA_DIR"], help="Directory inside the container where the and validation images will be saved for debugging purposes.")
+
+    parser.add_argument("--model_dir", type=str, default=os.environ["SM_MODEL_DIR"],
+                        help="Directory inside the container where the final model will be saved.")
+    parser.add_argument("--output_data_dir", type=str, default=os.environ["SM_OUTPUT_DATA_DIR"],
+                        help="Directory inside the container where the and validation images will be saved for "
+                             "debugging purposes.")
     parser.add_argument(
         "--pretrained-model",
         type=str,
@@ -24,7 +62,7 @@ def _parse_args():
         type=str,
         default=constants.DEFAULT_CLASS_DATA_DIR,
     )
-    
+
     parser.add_argument(
         "--instance_token",
         type=str,
@@ -39,7 +77,7 @@ def _parse_args():
     )
     parser.add_argument(
         "--with_prior_preservation",
-        type=args_utils.str2bool,
+        type=str2bool,
         default=constants.DEFAULT_WITH_PRIOR_PRESERVATION,
     )
     parser.add_argument(
@@ -54,12 +92,12 @@ def _parse_args():
     )
     parser.add_argument("--seed", type=int, default=constants.DEFAULT_SEED)
 
-    parser.add_argument("--center_crop", type=args_utils.str2bool, default=constants.DEFAULT_CENTER_CROP)
+    parser.add_argument("--center_crop", type=str2bool, default=constants.DEFAULT_CENTER_CROP)
     # Possible Improvement Currently text encoder = True results in results in CUDA memory issue for g4
     # machines. Fix it.
     parser.add_argument(
         "--train_text_encoder",
-        type=args_utils.str2bool,
+        type=str2bool,
         default=constants.DEFAULT_TRAIN_TEXT_ENCODER,
     )
     parser.add_argument(
@@ -70,7 +108,7 @@ def _parse_args():
     parser.add_argument("--epochs", type=int, default=constants.DEFAULT_EPOCHS)
     parser.add_argument(
         "--max_steps",
-        type=args_utils.str2optionalint,
+        type=str2optionalint,
         default=constants.DEFAULT_MAX_TRAIN_STEPS,
     )
     parser.add_argument(
@@ -78,7 +116,7 @@ def _parse_args():
         type=int,
         default=constants.DEFAULT_CHECKPOINTING_STEPS,
         help="Save a checkpoint of the training state every X updates."
-        
+
     )
     parser.add_argument(
         "--gradient_accumulation_steps",
@@ -87,7 +125,7 @@ def _parse_args():
     )
     parser.add_argument(
         "--gradient_checkpointing",
-        type=args_utils.str2bool,
+        type=str2bool,
         default=constants.DEFAULT_GRADIENT_CHECKPOINTING,
     )
     parser.add_argument(
@@ -136,19 +174,19 @@ def _parse_args():
     )
     parser.add_argument(
         "--use_8bit_adam",
-        type=args_utils.str2bool,
+        type=str2bool,
         default=constants.DEFAULT_USE_8BIT_ADAM,
         help="Whether or not to use 8-bit Adam from bitsandbytes.",
     )
     parser.add_argument(
         "--scale_lr",
-        type=args_utils.str2bool,
+        type=str2bool,
         default=constants.DEFAULT_SCALE_LR,
         help="Scale the learning rate by the number of GPUs, gradient accumulation steps, and batch size.",
     )
     parser.add_argument(
         "--mixed_precision",
-        type=args_utils.str2optionalstr,
+        type=str2optionalstr,
         default=constants.DEFAULT_MIXED_PRECISION,
         choices=constants.MIXED_PRECISION_CHOICES,
         help=(
@@ -158,7 +196,7 @@ def _parse_args():
     )
     parser.add_argument(
         "--prior_generation_precision",
-        type=args_utils.str2optionalstr,
+        type=str2optionalstr,
         default=constants.DEFAULT_PRIOR_GENERATION_PRECISION,
         choices=constants.PRIOR_GENERATION_PRECISION_CHOICES,
         help=(

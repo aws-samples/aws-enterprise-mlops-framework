@@ -29,7 +29,15 @@ with open("README.md", "r") as f:
     readme = f.read()
 
 
-required_packages = ["sagemaker"]
+required_packages = [
+    "sagemaker==2.194.0",
+    "transformers==4.25.1",
+    "accelerate==0.15.0",
+    "scipy==1.9.3",
+    "diffusers==0.11.1",
+    "bitsandbytes==0.38.1",
+    "datasets==2.8.0"
+]
 extras = {
     "test": [
         "black",
@@ -48,7 +56,7 @@ setuptools.setup(
     description=about["__description__"],
     version=about["__version__"],
     author=about["__author__"],
-    author_email=["__author_email__"],
+    author_email=about["__author_email__"],
     long_description=readme,
     long_description_content_type="text/markdown",
     url=about["__url__"],

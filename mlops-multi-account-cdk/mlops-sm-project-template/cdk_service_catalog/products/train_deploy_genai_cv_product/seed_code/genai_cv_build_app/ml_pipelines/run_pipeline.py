@@ -94,9 +94,11 @@ def main():  # pragma: no cover
         execution = pipeline.start()
         print(f"\n###### Execution started with PipelineExecutionArn: {execution.arn}")
 
-        #         TODO removiong wait time as training can take some time
         print("Waiting for the execution to finish...")
-        execution.wait()
+        # setting below values to wait for the execution to finish within 8 hrs.
+        delay_seconds: int = 30
+        max_attempts: int = 120 * 8
+        execution.wait(delay=delay_seconds, max_attempts=max_attempts)
         print("\n#####Execution completed. Execution step details:")
 
         print(execution.list_steps())
