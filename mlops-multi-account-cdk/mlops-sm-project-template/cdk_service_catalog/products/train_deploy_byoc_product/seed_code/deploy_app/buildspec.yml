@@ -1,0 +1,18 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.11
+    commands:
+      - pip install --upgrade --force-reinstall "awscli>1.20.30"
+
+  build:
+    commands:
+      - npm install -g aws-cdk
+      - pip install -r requirements.txt
+      - cdk synth --no-lookups
+
+artifacts:
+  base-directory: "cdk.out"
+  files: "**/*"
