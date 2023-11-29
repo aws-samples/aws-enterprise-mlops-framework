@@ -23,7 +23,7 @@ import yaml
 import argparse
 from logging import Logger
 from pathlib import Path
-from typing import Optional, Any
+from typing import Optional, Any, List
 import random
 from mlops_commons.utilities.cdk_app_config import (
     AppConfig,
@@ -50,17 +50,17 @@ class ConfigHelper(object):
 
         self.logger.info(f'cdk app base directory : {self.base_dir}')
 
-        yaml_config_path: str = os.path.join(
+        self.yaml_config_path: str = os.path.join(
             self.base_dir,
             'config',
             self.CONFIG_YAML_FILE_NAME
         )
 
-        self.logger.info(f'Trying to loading cdk app configuration file : {yaml_config_path}')
-        if os.path.exists(yaml_config_path):
-            self.app_config.load(Path(yaml_config_path))
+        self.logger.info(f'Trying to loading cdk app configuration file : {self.yaml_config_path}')
+        if os.path.exists(self.yaml_config_path):
+            self.app_config.load(Path(self.yaml_config_path))
         else:
-            self.logger.error(f'Cdk app configuration file not found : {yaml_config_path}')
+            self.logger.error(f'Cdk app configuration file not found : {self.yaml_config_path}')
             sys.exit(1)
 
         self.INSTANCE_INITIALIZED = True
@@ -74,6 +74,26 @@ class ConfigHelper(object):
     @staticmethod
     def get_config() -> CdkAppConfig:
         return ConfigHelper().app_config.cdk_app_config
+
+    def create_set_name_specific_config_as_str(self, set_name) -> str:
+
+        con_dict = yaml.safe_load(open(self.yaml_config_path, 'r', encoding='utf-8'))
+        con_dict['cdk_app_config']['deployments'] = [deployment for deployment in
+                                                     con_dict['cdk_app_config']['deployments'] if
+                                                     deployment.get('set_name', None) == set_name]
+        lic: str = self.get_license_str()
+        return ''.join([lic, os.linesep, os.linesep, yaml.dump(con_dict, default_flow_style=False, sort_keys=False)])
+
+    @staticmethod
+    def get_license_str():
+        result: List[str] = list()
+        with open(__file__, 'r', encoding='utf-8') as f:
+            for line in f:
+                if line.strip().startswith('#'):
+                    result.append(line)
+                elif len(result) > 3 and line.strip() == '':
+                    break
+        return ''.join(result)
 
     @classmethod
     def create_config_file(cls) -> None:

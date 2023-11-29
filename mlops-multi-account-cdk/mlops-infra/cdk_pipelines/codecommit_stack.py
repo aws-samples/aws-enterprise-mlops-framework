@@ -32,6 +32,7 @@ from mlops_commons.utilities.cdk_app_config import (
     CodeCommitConfig
 )
 from mlops_commons.utilities.zip_utils import ZipUtility
+from mlops_commons.utilities.config_helper import ConfigHelper
 
 
 class CdkPipelineCodeCommitStack(Stack):
@@ -45,13 +46,20 @@ class CdkPipelineCodeCommitStack(Stack):
         if os.path.exists(cdk_utilities.mlops_commons_base_dir):
             source_code_dirs.append(cdk_utilities.mlops_commons_base_dir)
 
+        config_helper: ConfigHelper = ConfigHelper()
+
         self.repo = codecommit.Repository(
             self,
             "MLOpsInfraPipelineCodeRepo",
             repository_name=f'{conf.repo_name}_{set_name}',
             description="CDK Code with MLOps Infra project",
-            code=codecommit.Code.from_zip_file(file_path=ZipUtility.create_zip(
-                source_code_dirs),
+            code=codecommit.Code.from_zip_file(file_path=ZipUtility.create_zip_using_payload(
+                source_code_dirs,
+                out_file_suffix=set_name,
+                file_key=f'/config/{config_helper.CONFIG_YAML_FILE_NAME}',
+                file_key_payload=config_helper.create_set_name_specific_config_as_str(
+                    set_name=set_name
+                )),
                 branch=conf.branch_name
             )
         )
@@ -70,4 +78,3 @@ class CdkPipelineCodeCommitStack(Stack):
             description='CDK stack for creating MLOps Infra pipeline codecommit repository',
             env=cdk.Environment(account=str(pipeline_conf.account), region=pipeline_conf.region)
         )
-
