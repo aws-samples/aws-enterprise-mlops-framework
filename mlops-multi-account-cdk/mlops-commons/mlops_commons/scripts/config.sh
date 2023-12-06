@@ -7,6 +7,13 @@ create_cdk_app_yml_file(){
   python -m mlops_commons.utilities.config_helper "create_config_file" --gov_account "$1"  --gov_region "$2" --gov_profile "$3" --dev_account  "$4" --dev_profile  "$5" --preprod_account  "$6" --preprod_profile  "$7" --prod_account  "$8" --prod_profile "$9"
 }
 
+create_aws_profile_using_isen_temp_cred(){
+  export PYTHONIOENCODING=utf-8
+  account=$1
+  stage=$2
+  profile="$(python -m mlops_commons.utilities.isen_account_utils "$stage" "$account" )"
+  echo "$profile"
+}
 create_using_new_aws_isen_accounts(){
 
   export PYTHONIOENCODING=utf-8
@@ -111,10 +118,51 @@ create_using_user_provided_details(){
         fi
       done
   else
-    echo ""
-    echo "Please first configure Aws profiles for governance, dev, preprod, prod accounts and then continue!!!"
-    echo ""
-    exit 1
+    if [[ -z "$(which mwinit | grep /mwinit)" ]]; then
+      echo ""
+      echo "Please first configure Aws profiles for governance, dev, preprod, prod accounts and then continue!!!"
+      echo ""
+      exit 1
+    else
+
+      echo ""
+      echo -n "Do you want to configure Aws Profile for all the Aws Accounts [y/n]:"
+      read -r aws_profile_choice
+
+      if [[ "$aws_profile_choice" = "y" ]]; then
+
+        echo ""
+        echo "Before proceeding, please re-authenticate through midway "
+        mwinit
+
+        for stage in governance dev preprod prod
+          do
+            echo ""
+            echo -n "Enter $stage Account ID: "
+            read -r account
+            profile=$(create_aws_profile_using_isen_temp_cred "$account" "$stage")
+            if [[ "$stage" = "governance" ]]; then
+              gov_account="$account"
+              gov_profile="$profile"
+            elif [[ "$stage" = "dev" ]]; then
+              dev_account="$account"
+              dev_profile="$profile"
+            elif [[ "$stage" = "preprod" ]]; then
+              preprod_account="$account"
+              preprod_profile="$profile"
+            elif [[ "$stage" = "prod" ]]; then
+              prod_account="$account"
+              prod_profile="$profile"
+            fi
+          done
+      else
+        echo ""
+        echo "Please first configure Aws profiles for governance, dev, preprod, prod accounts and then continue!!!"
+        echo ""
+        exit 1
+      fi
+    fi
+
   fi
 
   create_cdk_app_yml_file "$gov_account" "$region" "$gov_profile" "$dev_account" "$dev_profile" "$preprod_account" "$preprod_profile" "$prod_account" "$prod_profile"

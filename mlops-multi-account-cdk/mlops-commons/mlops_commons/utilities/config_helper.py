@@ -125,7 +125,7 @@ class ConfigHelper(object):
 
             }
         }
-        for bu, stages in [('first-example', [
+        for bu, stages in [('business-unit-1', [
             ('dev', args.dev_account, args.dev_profile),
             ('preprod', args.preprod_account, args.preprod_profile),
             ('prod', args.prod_account, args.prod_profile)
