@@ -401,6 +401,9 @@ In the root folder i.e. mlops-multi-account-cdk, there is script `mlops-multi-ac
 # suppose you want to deploy using auto approval
 ./mlops-multi-account.sh infra deploy --all --require-approval never
 
+# refresh credentials for aws internal isen account
+./mlops-multi-account.sh config refresh_aws_credentials
+
 # To run make clean/init
 ./mlops-multi-account.sh infra init
 ./mlops-multi-account.sh infra clean

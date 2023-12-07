@@ -18,7 +18,7 @@ main() {
       "$SCRIPT_PATH"/mlops-commons/mlops_commons/scripts/prerequisites.sh "$SCRIPT_PATH/mlops-infra" "$SCRIPT_PATH/mlops-sm-project-template"
       echo ""
       echo "Now start preparing cdk app config"
-      "$SCRIPT_PATH"/mlops-commons/mlops_commons/scripts/config.sh
+      "$SCRIPT_PATH"/mlops-commons/mlops_commons/scripts/config.sh "${@:2}"
       echo ""
       echo "Now start bootstrapping aws accounts"
       "$SCRIPT_PATH"/mlops-commons/mlops_commons/scripts/bootstrap.sh
@@ -29,7 +29,7 @@ main() {
       ;;
     config)
       echo "Start preparing config as per user input"
-      "$SCRIPT_PATH"/mlops-commons/mlops_commons/scripts/config.sh
+      "$SCRIPT_PATH"/mlops-commons/mlops_commons/scripts/config.sh "${@:2}"
       ;;
     bootstrap)
       echo "Start bootstrapping Aws accounts"

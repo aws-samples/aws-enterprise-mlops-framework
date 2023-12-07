@@ -13,9 +13,15 @@ create_aws_profile_using_isen_temp_cred(){
   export PYTHONIOENCODING=utf-8
   account=$1
   stage=$2
-  profile="$(python -m mlops_commons.utilities.isen_account_utils "$stage" "$account" )"
+  profile="$(python -m mlops_commons.utilities.isen_account_utils create_profile "$stage" "$account" )"
   echo "$profile"
 }
+
+refresh_aws_profile_credentials_using_isen_temp_cred(){
+  export PYTHONIOENCODING=utf-8
+  python -m mlops_commons.utilities.isen_account_utils refresh_profile_credentials
+}
+
 create_using_new_aws_isen_accounts(){
 
   export PYTHONIOENCODING=utf-8
@@ -188,6 +194,13 @@ main(){
   config_file="$SCRIPT_PATH"/../config/cdk-app.yml
 
   if [[ -f "$config_file" ]]; then
+
+    if [[ $# -gt 0 ]] && [[ "$1" = "refresh_aws_credentials" ]]; then
+      refresh_aws_profile_credentials_using_isen_temp_cred
+      exit 0
+    fi
+
+
     echo ""
     echo -n "There is already a config file, do you still want to overwrite it [y/n]:"
     read -r overwrite_config

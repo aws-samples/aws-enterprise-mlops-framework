@@ -89,9 +89,31 @@ class IsenAccountUtils:
 
         return res
 
+    @classmethod
+    def refresh_all_credentials(cls):
+        from mlops_commons.utilities.cdk_app_config import CdkAppConfig
+        from mlops_commons.utilities.config_helper import ConfigHelper
+        config: CdkAppConfig = ConfigHelper().get_config()
+
+        profile_name: str = IsenAccountUtils.configure_aws_profile(stage='governance', account=config.pipeline.account)
+
+        print(f'Successfully refreshed credentials for profile : {profile_name}')
+
+        for dep in config.deployments:
+            for st in dep.stages:
+                profile_name: str = IsenAccountUtils.configure_aws_profile(stage=st.stage_name,
+                                                                           account=st.account)
+
+                print(f'Successfully refreshed credentials for profile : {profile_name}')
+
 
 # used for shell script to get attribute value
 if __name__ == '__main__':
-    profile: str = IsenAccountUtils.configure_aws_profile(sys.argv[1], sys.argv[2])
-    # print(f'{profile} , created/refreshed Successfully')
-    print(profile)
+    cmd: str = str(sys.argv[1]).strip().lower()
+    if cmd == 'create_profile':
+        profile: str = IsenAccountUtils.configure_aws_profile(sys.argv[2], sys.argv[3])
+        # print(f'{profile} , created/refreshed Successfully')
+        print(profile)
+    elif cmd == 'refresh_profile_credentials':
+        print('refreshing credentials...')
+        IsenAccountUtils.refresh_all_credentials()
