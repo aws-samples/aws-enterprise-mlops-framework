@@ -17,7 +17,25 @@ create_aws_profile_using_isen_temp_cred(){
   echo "$profile"
 }
 
+run_midway_auth(){
+  run_midway="no"
+  if [[ -f ~/.midway/cookie ]]; then
+    if [[ $(grep HttpOnly_midway-auth.amazon.com ~/.midway/cookie | cut -d $'\t' -f 5) -lt $( date  +%s ) ]]; then
+      run_midway="yes"
+    fi
+  else
+    run_midway="yes"
+  fi
+
+  if [[ "$run_midway" = "yes" ]]; then
+    echo ""
+    echo "Before proceeding, please re-authenticate through midway "
+    mwinit
+  fi
+}
+
 refresh_aws_profile_credentials_using_isen_temp_cred(){
+  run_midway_auth
   export PYTHONIOENCODING=utf-8
   python -m mlops_commons.utilities.isen_account_utils refresh_profile_credentials
 }
@@ -26,9 +44,7 @@ create_using_new_aws_isen_accounts(){
 
   export PYTHONIOENCODING=utf-8
 
-  echo ""
-  echo "Before proceeding, please re-authenticate through midway "
-  mwinit
+  run_midway_auth
 
   region="$1"
 
@@ -136,9 +152,7 @@ create_using_user_provided_details(){
 
       if [[ "$aws_profile_choice" = "y" ]]; then
 
-        echo ""
-        echo "Before proceeding, please re-authenticate through midway "
-        mwinit
+        run_midway_auth
 
         for stage in governance dev preprod prod
           do

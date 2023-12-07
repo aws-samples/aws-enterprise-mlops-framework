@@ -70,10 +70,10 @@ class IsenAccountUtils:
             cmds.append(set_session_token_cmd)
         for cmd in cmds:
             # print(cmd)
-            cls.run(cmd=cmd, account='')
+            cls.run(cmd=cmd)
 
     @staticmethod
-    def run(cmd: str, account: str) -> str:
+    def run(cmd: str, account: str = '') -> str:
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, text=True)
         res: str = ""
         num_empty_lines = 0
@@ -86,7 +86,6 @@ class IsenAccountUtils:
             res = f'{res}{line}'
             num_empty_lines = num_empty_lines + 1
         process.kill()
-
         return res
 
     @classmethod
@@ -116,11 +115,9 @@ class IsenAccountUtils:
 
 # used for shell script to get attribute value
 if __name__ == '__main__':
-    cmd: str = str(sys.argv[1]).strip().lower()
-    if cmd == 'create_profile':
-        profile: str = IsenAccountUtils.configure_aws_profile(sys.argv[2], sys.argv[3])
-        # print(f'{profile} , created/refreshed Successfully')
-        print(profile)
-    elif cmd == 'refresh_profile_credentials':
+    command: str = str(sys.argv[1]).strip().lower()
+    if command == 'create_profile':
+        print(IsenAccountUtils.configure_aws_profile(sys.argv[2], sys.argv[3]))
+    elif command == 'refresh_profile_credentials':
         print('refreshing credentials...')
         IsenAccountUtils.refresh_all_credentials()

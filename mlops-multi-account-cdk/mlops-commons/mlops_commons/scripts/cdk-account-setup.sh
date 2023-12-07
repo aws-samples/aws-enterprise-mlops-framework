@@ -7,6 +7,7 @@ set -e
 cdk_account_setup(){
   SCRIPT=$(readlink -f "$0")
   SCRIPT_PATH=$(dirname "$SCRIPT")
+  source $SCRIPT_PATH/common-configs.sh
   cd "$SCRIPT_PATH/../../" || exit
 
 
