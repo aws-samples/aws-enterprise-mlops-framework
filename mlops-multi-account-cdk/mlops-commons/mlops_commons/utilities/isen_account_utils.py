@@ -95,14 +95,21 @@ class IsenAccountUtils:
         from mlops_commons.utilities.config_helper import ConfigHelper
         config: CdkAppConfig = ConfigHelper().get_config()
 
-        profile_name: str = IsenAccountUtils.configure_aws_profile(stage='governance', account=config.pipeline.account)
+        profile_name: str = IsenAccountUtils.configure_aws_profile(
+            stage='governance',
+            account=config.pipeline.account,
+            profile_name=config.pipeline.bootstrap.aws_profile
+        )
 
         print(f'Successfully refreshed credentials for profile : {profile_name}')
 
         for dep in config.deployments:
             for st in dep.stages:
-                profile_name: str = IsenAccountUtils.configure_aws_profile(stage=st.stage_name,
-                                                                           account=st.account)
+                profile_name: str = IsenAccountUtils.configure_aws_profile(
+                    stage=st.stage_name,
+                    account=st.account,
+                    profile_name=st.bootstrap.aws_profile
+                )
 
                 print(f'Successfully refreshed credentials for profile : {profile_name}')
 
