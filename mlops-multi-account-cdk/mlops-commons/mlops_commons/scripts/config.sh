@@ -2,6 +2,8 @@
 # this script uses Homebrew to do the installations for all prerequisites to deploy the solution described in this repository
 # set -e
 
+
+
 create_cdk_app_yml_file(){
   # echo --gov_account "$1"  --gov_region "$2" --gov_profile "$3" --dev_account  "$4" --dev_profile  "$5" --preprod_account  "$6" --preprod_profile  "$7" --prod_account  "$8" --prod_profile "$9"
   python -m mlops_commons.utilities.config_helper "create_config_file" --gov_account "$1"  --gov_region "$2" --gov_profile "$3" --dev_account  "$4" --dev_profile  "$5" --preprod_account  "$6" --preprod_profile  "$7" --prod_account  "$8" --prod_profile "$9"
@@ -25,9 +27,6 @@ create_using_new_aws_isen_accounts(){
   region="$1"
 
   random="$RANDOM"
-
-  # echo -n "Enter your manager's alias to use as secondary owner of this account:"
-  # read -r secondary_owner
 
   secondary_owner="$(python -m mlops_commons.utilities.user_details "$USER" )"
 
@@ -118,7 +117,7 @@ create_using_user_provided_details(){
         fi
       done
   else
-    if [[ -z "$(which mwinit | grep /mwinit)" ]]; then
+    if [[ -z "$(which mwinit 2>&1 | grep -i -E  /mwinit)" ]]; then
       echo ""
       echo "Please first configure Aws profiles for governance, dev, preprod, prod accounts and then continue!!!"
       echo ""
@@ -173,6 +172,9 @@ main(){
 
   SCRIPT=$(readlink -f "$0")
   SCRIPT_PATH=$(dirname "$SCRIPT")
+  source $SCRIPT_PATH/common-configs.sh
+  load_profile
+
   cd "$SCRIPT_PATH/../../" || exit
 
   CONDA_BASE=$(conda info --base)
@@ -198,7 +200,7 @@ main(){
 
   if [[ "$overwrite_config" = "y" ]]; then
     has_required_cmds_to_create_account="y"
-    if [[ -z "$(which mwinit | grep /mwinit)" ]] || [[ -z "$(which isengardcli | grep /isengardcli)" ]]; then
+    if [[ -z "$(which mwinit 2>&1 | grep -i -E  /mwinit)" ]] || [[ -z "$(which isengardcli 2>&1 | grep -i -E /isengardcli)" ]]; then
       has_required_cmds_to_create_account="n"
     fi
 

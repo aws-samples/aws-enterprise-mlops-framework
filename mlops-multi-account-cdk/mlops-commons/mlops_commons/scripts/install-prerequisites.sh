@@ -265,10 +265,15 @@ install_linux_packages(){
         yum_cmd="sudo yum"
       fi
 
-      [[ -z "$($yum_cmd list installed which 2>&1 |  grep -i -E which)" ]] && $yum_cmd update -y && $yum_cmd upgrade -y && $yum_cmd install -y which --allowerasing
-      [[ -z "$($yum_cmd list installed curl 2>&1 |  grep -i -E curl)" ]] && $yum_cmd update -y && $yum_cmd upgrade -y && $yum_cmd install -y curl --allowerasing
-      [[ -z "$($yum_cmd list installed gcc 2>&1 |  grep -i -E ^gcc)" ]] && $yum_cmd install -y gcc --allowerasing
-      [[ -z "$($yum_cmd list installed python3-devel 2>&1 |  grep -i -E ^python3-devel)" ]] && $yum_cmd install -y python3-devel --allowerasing
+      resolve_dep=""
+      if [[ -z "$C9_USER" ]]; then
+        resolve_dep="--allowerasing"
+      fi
+
+      [[ -z "$($yum_cmd list installed which 2>&1 |  grep -i -E which)" ]] && $yum_cmd update -y && $yum_cmd upgrade -y && $yum_cmd install -y which $resolve_dep
+      [[ -z "$($yum_cmd list installed curl 2>&1 |  grep -i -E curl)" ]] && $yum_cmd update -y && $yum_cmd upgrade -y && $yum_cmd install -y curl $resolve_dep
+      [[ -z "$($yum_cmd list installed gcc 2>&1 |  grep -i -E ^gcc)" ]] && $yum_cmd install -y gcc $resolve_dep
+      [[ -z "$($yum_cmd list installed python3-devel 2>&1 |  grep -i -E ^python3-devel)" ]] && $yum_cmd install -y python3-devel $resolve_dep
       echo "linux packages installed for $os_name"
     else
       echo "not supported os : $os_name"
@@ -311,7 +316,7 @@ install_prerequisites(){
   # which is also having this s3 policy issue "Policy has invalid action (Service: S3, Status Code: 400"
   # https://github.com/aws/aws-cdk/issues/27542
   CDK_VERSION=2.100.0
-  [[ -z "$(npm list -g | grep aws-cdk@$CDK_VERSION)" ]] && npm install -g aws-cdk@$CDK_VERSION
+  [[ -z "$(npm list -g | grep aws-cdk@$CDK_VERSION)" ]] && npm install -g aws-cdk@$CDK_VERSION --force
 
   # setup python environment
   env_name=cdk-env
@@ -325,4 +330,6 @@ install_prerequisites(){
     pip install  -r "$project_path/requirements.txt" | grep -v "Requirement already satisfied:" || test $? = 1
     # now you should have all the necessary packages setup on your machines and should proceed with creating the aws profiles to start setting up the accounts and deploying the solution
   done
+  echo ""
+  echo "installation completed"
 }
