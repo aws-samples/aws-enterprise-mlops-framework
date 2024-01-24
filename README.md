@@ -20,22 +20,26 @@ The repository will also create example SageMaker users (Lead Data Scientist and
 Once you have deployed [mlops-infra](mlops-infra/), deploy [mlops-sm-project-template](mlops-sm-project-template/):
 
 [mlops-sm-project-template](mlops-sm-project-template/) will create a Service Catalog portfolio that contains SageMaker project templates as Service Catalog products.
-To do so, the [service_catalog](mlops-sm-project-template/mlops_sm_project_template/service_catalog.py) stack iterates over the [templates](mlops-sm-project-template/mlops_sm_project_template/templates/) folder which contains your different organization SageMaker project templates in the form of CDK stacks.
+To do so, the [service_catalog](mlops-sm-project-template/cdk_service_catalog/sm_service_catalog.py) stack iterates over the [templates](mlops-sm-project-template/cdk_service_catalog/products) folder which contains your different organization SageMaker project templates in the form of CDK stacks.
 The general idea of what those templates create is explained in [mlops-sm-project-template README](mlops-sm-project-template/README) and in this [SageMaker Projects general architecture diagram](mlops-sm-project-template/diagrams/mlops-sm-project-general-architecture.jpg)
 These example SageMaker project templates can be customized for the need of your organization.
 
 **Note:** Both of those folders are cdk applications which also come with their respective CICD pipelines hosted in a central governance account, to deploy and maintain the infrastructure they define to target accounts. This is why you will see that both also contain a `pipeline_stack` and a `codecommit_stack`.
 However if you are not interested in the concept of a centralized governance account and CICD mechanism, or if you already have an internal mechanism in place for those ([AWS Control Tower](https://docs.aws.amazon.com/controltower/index.html), [ADF](https://github.com/awslabs/aws-deployment-framework), etc...), you can simply use the `CoreStage` of each of those CDK applications. See the READMEs of each subfolder for more details.
 
+**Note:** Please follow the mandatory configuration required for both module `mlops-infra` and `mlops-sm-project-template` from [README](mlops-commons/mlops_commons/README.md) `mlops-commons/mlops_commons/README.md`
+
 ## Contacts
 
 If you have any comments or questions, please contact:
 
-The maintaining Team: 
+The maintaining Team:
 
 Viktor Malesevic <malesv@amazon.de>
 
 Fotinos Kyriakides <kyriakf@amazon.com>
+
+Ravi Bhushan Ratnakar <ravibrat@amazon.de>
 
 Gabija Pasiunaite <gabipas@amazon.ch>
 
