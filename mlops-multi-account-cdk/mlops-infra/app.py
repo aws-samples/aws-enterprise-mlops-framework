@@ -15,42 +15,64 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+
+# !/usr/bin/env python3
+
+from logging import Logger
+
 import aws_cdk as cdk
-import os
-import json
 
-from mlops_infra.config.constants import PIPELINE_ACCOUNT, DEFAULT_DEPLOYMENT_REGION
-from mlops_infra.pipeline_stack import PipelineStack, CoreStage
-from mlops_infra.codecommit_stack import CodeCommitStack
+import cdk_utilities
+from cdk_pipelines.codecommit_stack import CdkPipelineCodeCommitStack
+from cdk_pipelines.pipeline_stack import CdkPipelineStack
+from mlops_commons.utilities.cdk_app_config import CdkAppConfig
+from mlops_commons.utilities.config_helper import ConfigHelper
+from mlops_commons.utilities.log_helper import LogHelper
 
-def load_account_set_config(filename):
-    """
-    Loads config from file
-    """
 
-    with open(filename, "r", encoding="utf-8") as f:
-        config = json.load(f)
+class MLOpsInfraCdkApp:
 
-    return config
+    def __init__(self):
+        self.logger: Logger = LogHelper.get_logger(self)
+        self.logger.info(f'mlops_commons path : {cdk_utilities.mlops_commons_base_dir}')
 
-app = cdk.App()
+    def main(self):
 
-pipeline_env = cdk.Environment(account=PIPELINE_ACCOUNT, region=DEFAULT_DEPLOYMENT_REGION)
+        self.logger.info('Starting cdk app...')
 
-CodeCommitStack(app, "ml-infra-cc-repo", env=pipeline_env)
+        app = cdk.App()
+        cac: CdkAppConfig = ConfigHelper.get_config()
 
-config_sets = load_account_set_config("mlops_infra/config/accounts.json")
+        for dc in cac.deployments:
 
-for accounts_set in config_sets:
-    PipelineStack(app, f"ml-infra-deploy-pipeline-{accounts_set['SET_NAME']}", env=pipeline_env, config_set=accounts_set)
+            self.logger.info(f'Start deploying config set_name : {dc.set_name}')
 
-# Personal Stacks for testing locally, comment out when committing to repository
-# if not os.getenv("CODEBUILD_BUILD_ARN"):
-#     CoreStage(
-#         app,
-#         "Personal",  ## change this to another stack name when doing local tests
-#         deploy_sm_domain=True,  ## change this to False if you only want to deploy the VPC stack
-#         env=pipeline_env,
-#     )
+            if not dc.enabled:
+                self.logger.info(f'Skipping deployment of config ->'
+                                 f'set name : {dc.set_name}, '
+                                 f' as it is disabled in configuration file. To enable it, set the attribute '
+                                 f'enabled=True at deployments level in yaml configuration file ')
+                continue
 
-app.synth()
+            repo_stack: CdkPipelineCodeCommitStack = CdkPipelineCodeCommitStack.get_instance(
+                app,
+                set_name=dc.set_name,
+                pipeline_conf=cac.pipeline
+            )
+
+            CdkPipelineStack(
+                app,
+                f"ml-infra-deploy-pipeline-{dc.set_name}",
+                app_prefix=cac.app_prefix,
+                set_name=dc.set_name,
+                deploy_stages_conf=dc.stages,
+                pipeline_conf=cac.pipeline,
+                description="CI/CD CDK Pipelines for MLOps Infra",
+                env=cdk.Environment(account=str(cac.pipeline.account), region=cac.pipeline.region)
+            ).add_dependency(repo_stack)
+
+        app.synth()
+
+
+if __name__ == "__main__":
+    MLOpsInfraCdkApp().main()
