@@ -3,3 +3,6 @@
 outputs
 ipynb_checkpoints
 sm-pr.code-workspace
+*__pycache__
+*cdk-app.yml*
+*cdk.context.json*
