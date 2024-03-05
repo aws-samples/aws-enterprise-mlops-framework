@@ -1,11 +1,11 @@
 
 ## Solution Setup
 - AWS Profiles
+- Using convenient script for local setup & Bootstrap
 - Configuration using config file cdk-app.yml
 - Pipeline configuration
 - Account set specific configurations 
 - Bootstrap using execution policy
-- Using convenient script for local setup & Bootstrap
 - Manual Bootstrap
 
 ### Setup AWS Profiles
@@ -28,10 +28,52 @@ aws_session_token = YOUR_SESSION_TOKEN  # this token is generated if you are usi
 
 [mlops-prod]
 ...
+```
 
+### Using convenient script for local setup , creating config file & Bootstrap
 
+For setting up your local environment for required software like python, nodejs, python modules, docker etc.., bootstrapping aws accounts and building of deploying cdk application, we created are few convenient scripts with cli commands.
+In the root folder i.e. mlops-multi-account-cdk, there is script `mlops-multi-account.sh`. This script is currently compatible with operating system like MacOS, AmazonLinux, Redhat, Ubuntu, Debian. 
+```bash
+# for installing installing virtual python, nodejs, docker, required python modules using requiremnts.txt of mlops-infra & mlops-sm-project-template, create cdk-app.yml file as per user input and bootstrapping accounts configured in mlops-commons/mlops_commons/config/cdk-app.yml
+./mlops-multi-account.sh setup
+
+# for only virtual python, nodejs, docker, required python modules using requiremnts.txt of mlops-infra & mlops-sm-project-template
+./mlops-multi-account.sh prerequisites|dependencies|install # all are same, use any one
+
+# for only creating cdk-app.yml file as per user input
+./mlops-multi-account.sh config
+
+# for only bootstrapping accounts configured in mlops-commons/mlops_commons/config/cdk-app.yml
+./mlops-multi-account.sh bootstrap
+
+# For synthesizing mlops-infra project
+./mlops-multi-account.sh infra synth
+
+# For deploy mlops-infra project
+./mlops-multi-account.sh infra deploy --all
+
+# For synthesizing mlops-sm-project-template project
+./mlops-multi-account.sh template synth
+
+# For deploy mlops-sm-project-template project
+./mlops-multi-account.sh template deploy --all
+
+# Here infra represents mlops-infra project & template represents mlops-sm-project-template. After this project name, you can use any cdk cli arguments like below
+# suppose you want to deploy using auto approval
+./mlops-multi-account.sh infra deploy --all --require-approval never
+
+# refresh credentials for aws internal isen account
+./mlops-multi-account.sh config refresh_aws_credentials
+
+# To run make clean/init
+./mlops-multi-account.sh infra init
+./mlops-multi-account.sh infra clean
+./mlops-multi-account.sh template init
+./mlops-multi-account.sh template clean
 
 ```
+
 ### Configuration using `cdk-app.yml`
 First, copy the [configs file](config/cdk-app.yml.bak), removing the ```.bak``` suffix. Here you can modify the defaults - for pipeline configuration. You can configure account details in ```deployments``` section. The solution also supports multiplle account sets (ie multiple sets of dev/stg/prod)
 
@@ -370,7 +412,7 @@ cdk_app_config:
 ```
 
 ### Using convenient script for local setup , creating config file & Bootstrap
-For setting up your local environment for required software like python, nodejs, python modules, docker etc.., bootstrapping aws accounts and building of deploying cdk application, there are few convenient scripts with cli commands.
+For setting up your local environment for required software like python, nodejs, python modules, docker etc.., bootstrapping aws accounts and building of deploying cdk application, we created are few convenient scripts with cli commands.
 In the root folder i.e. mlops-multi-account-cdk, there is script `mlops-multi-account.sh`. This script is currently compatible with operating system like MacOS, AmazonLinux, Redhat, Ubuntu, Debian. 
 ```bash
 # for installing installing virtual python, nodejs, docker, required python modules using requiremnts.txt of mlops-infra & mlops-sm-project-template, create cdk-app.yml file as per user input and bootstrapping accounts configured in mlops-commons/mlops_commons/config/cdk-app.yml
