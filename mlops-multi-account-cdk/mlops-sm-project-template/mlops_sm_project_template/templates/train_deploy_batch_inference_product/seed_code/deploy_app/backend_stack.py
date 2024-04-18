@@ -1,6 +1,5 @@
-from aws_cdk import Aws, Stack, Tags
+from aws_cdk import Stack, Tags
 from aws_cdk import aws_ec2 as ec2
-from aws_cdk import aws_kms as kms
 from aws_cdk import aws_ssm as ssm
 from constructs import Construct
 

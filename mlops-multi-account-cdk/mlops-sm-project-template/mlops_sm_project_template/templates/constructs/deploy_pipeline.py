@@ -14,69 +14,51 @@
 # HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+import os
+import typing
+from base64 import b64encode
 
-from aws_cdk import (
-    Aws,
-    CfnCapabilities,
-    aws_codecommit as codecommit,
-    aws_codebuild as codebuild,
-    aws_codepipeline_actions as codepipeline_actions,
-    aws_codepipeline as codepipeline,
-    aws_events as events,
-    aws_events_targets as targets,
-    aws_s3 as s3,
-    aws_iam as iam,
-)
-import aws_cdk
+import aws_cdk as cdk
+from aws_cdk import Aws, CfnCapabilities
+from aws_cdk import aws_codebuild as codebuild
+from aws_cdk import aws_codecommit as codecommit
+from aws_cdk import aws_codepipeline as codepipeline
+from aws_cdk import aws_codepipeline_actions as codepipeline_actions
+from aws_cdk import aws_events as events
+from aws_cdk import aws_events_targets as targets
+from aws_cdk import aws_iam as iam
+from aws_cdk import aws_s3 as s3
 from constructs import Construct
+from typing import Optional
 
 
 class DeployPipelineConstruct(Construct):
     def __init__(
-        self,
-        scope: Construct,
-        construct_id: str,
-        project_name: str,
-        project_id: str,
-        s3_artifact: s3.IBucket,
-        pipeline_artifact_bucket: s3.IBucket,
-        model_package_group_name: str,
-        repo_s3_bucket_name: str,
-        repo_s3_object_key: str,
-        preprod_account: int,
-        prod_account: int,
-        deployment_region: str,
-        create_model_event_rule: bool,
-        **kwargs,
+            self,
+            scope: Construct,
+            construct_id: str,
+            project_name: str,
+            project_id: str,
+            pipeline_artifact_bucket: s3.Bucket,
+            model_package_group_name: str,
+            repository: codecommit.Repository,
+            s3_artifact: s3.IBucket,
+            preprod_account: str,
+            prod_account: str,
+            deployment_region: str,
+            create_model_event_rule: bool,
+            caller_base_dir: Optional[str],
+            ecr_repo_arn: Optional[str] = None,
+
     ) -> None:
-        super().__init__(scope, construct_id, **kwargs)
+        super().__init__(scope, construct_id)
+        base_dir: str = os.path.abspath(f'{os.path.dirname(__file__)}')
 
         # Define resource names
         pipeline_name = f"{project_name}-{construct_id}"
+        build_image = codebuild.LinuxBuildImage.STANDARD_7_0
 
-        # Create source repo from seed bucket/key
-        deploy_app_cfnrepository = codecommit.CfnRepository(
-            self,
-            "BuildAppCodeRepo",
-            repository_name=f"{project_name}-{construct_id}",
-            code=codecommit.CfnRepository.CodeProperty(
-                s3=codecommit.CfnRepository.S3Property(
-                    bucket=repo_s3_bucket_name,
-                    key=repo_s3_object_key,
-                    object_version=None,
-                ),
-                branch_name="main",
-            ),
-            tags=[
-                aws_cdk.CfnTag(key="sagemaker:project-id", value=project_id),
-                aws_cdk.CfnTag(key="sagemaker:project-name", value=project_name),
-            ],
-        )
-
-        # Reference the newly created repository
-        deploy_app_repository = codecommit.Repository.from_repository_name(
-            self, "ImportedDeployRepo", deploy_app_cfnrepository.attr_name
-        )
+        model_bucket_arn = s3_artifact.bucket_arn
 
         cdk_synth_build_role = iam.Role(
             self,
@@ -87,10 +69,12 @@ class DeployPipelineConstruct(Construct):
 
         cdk_synth_build_role.add_to_policy(
             iam.PolicyStatement(
-                actions=["sagemaker:ListModelPackages"],
+                actions=["sagemaker:ListModelPackages", "sagemaker:DescribeModelPackage"],
                 resources=[
-                    f"arn:{Aws.PARTITION}:sagemaker:{Aws.REGION}:{Aws.ACCOUNT_ID}:model-package-group/{project_name}-{project_id}*",
-                    f"arn:{Aws.PARTITION}:sagemaker:{Aws.REGION}:{Aws.ACCOUNT_ID}:model-package/{project_name}-{project_id}/*",
+                    f"arn:{Aws.PARTITION}:sagemaker:{Aws.REGION}:{Aws.ACCOUNT_ID}:model-package-group/*",
+                    # TODO: Add conditions
+                    f"arn:{Aws.PARTITION}:sagemaker:{Aws.REGION}:{Aws.ACCOUNT_ID}:model-package/*",
+                    # TODO: Add conditions
                 ],
             )
         )
@@ -117,7 +101,7 @@ class DeployPipelineConstruct(Construct):
                 resources=[f"arn:aws:kms:{Aws.REGION}:{Aws.ACCOUNT_ID}:key/*"],
             ),
         )
-        
+
         cdk_synth_build_role.add_to_policy(
             iam.PolicyStatement(
                 actions=[
@@ -125,19 +109,126 @@ class DeployPipelineConstruct(Construct):
                 ],
                 effect=iam.Effect.ALLOW,
                 resources=[
-                    f"arn:aws:ssm:{Aws.REGION}:{Aws.ACCOUNT_ID}:parameter/mlops/{project_name}*",
+                    f"arn:aws:ssm:{Aws.REGION}:{Aws.ACCOUNT_ID}:parameter/mlops/*",  # TODO: Add conditions
                 ],
             ),
         )
-        
+
         cdk_synth_build_role.add_to_policy(
             iam.PolicyStatement(
                 actions=[
-                    "s3:GetObject",
-                    "s3:GetObjectVersion"
+                    "s3:AbortMultipartUpload",
+                    "s3:DeleteObject",
+                    "s3:GetBucket*",
+                    "s3:GetObject*",
+                    "s3:List*",
+                    "s3:PutObject*",
+                    "s3:Create*",
                 ],
-                effect=iam.Effect.ALLOW,
-                resources=[f"{s3_artifact.bucket_arn}/*"],
+                resources=[
+                    s3_artifact.bucket_arn,
+                    f"{s3_artifact.bucket_arn}/*",
+                    "arn:aws:s3:::sagemaker-*",
+                ],
+            )
+        )
+
+        environment_variables = dict()
+
+        environment_variables.update({
+            "MODEL_PACKAGE_GROUP_NAME": codebuild.BuildEnvironmentVariable(
+                value=model_package_group_name
+            )
+        })
+        environment_variables.update({
+            "PROJECT_ID": codebuild.BuildEnvironmentVariable(value=project_id)
+        })
+        environment_variables.update({
+            "PROJECT_NAME": codebuild.BuildEnvironmentVariable(
+                value=project_name
+            )
+        })
+
+        environment_variables.update({
+            "MODEL_BUCKET_ARN": codebuild.BuildEnvironmentVariable(value=model_bucket_arn)
+        })
+
+        environment_variables.update({
+            "ARTIFACT_BUCKET": codebuild.BuildEnvironmentVariable(value=s3_artifact.bucket_name)
+        })
+        environment_variables.update({
+            "ARTIFACT_BUCKET_KMS_ID": codebuild.BuildEnvironmentVariable(
+                value=s3_artifact.encryption_key.key_id
+            )
+        })
+
+        if ecr_repo_arn:
+            environment_variables.update({
+                "ECR_REPO_ARN": codebuild.BuildEnvironmentVariable(value=ecr_repo_arn)
+            })
+
+        mandatory_cfn_nag_ignore_env_name: str = 'mandatory_cfn_nag_ignore'
+        merged_cfn_nag_file_name: str = 'merged_cfn_nag_ignore.yml'
+
+        cfn_nag_ignore_python_fn = self.create_python_fn_cfn_nag_yaml_merge(
+            mandatory_nag_env_name=mandatory_cfn_nag_ignore_env_name,
+            product_specific_cfn_nag_filepath='./config/cfn_nag_ignore.yml',
+            # this file will be in Cfn nag codepipeline stage
+            out_file_name=merged_cfn_nag_file_name
+        )
+
+        cfn_nag_mandatory_yml_b64: str = self.encode_file_as_base64_string(
+            f'{base_dir}{os.path.sep}conf{os.path.sep}cfn_nag_ignore.yml'
+        )
+
+        default_deploy_build_spec_env_name: str = 'default_deploy_build_spec'
+
+        build_spec_python_fn = self.create_python_fn_deploy_build_spec_update(
+            default_build_spec_env_name=default_deploy_build_spec_env_name,
+            product_specific_build_spec_filepath='./buildspec.yml',  # this file will be in Cfn Prepare Synth action
+            command=f'cp ./{merged_cfn_nag_file_name} ./cdk.out/'
+        )
+
+        default_deploy_build_spec_yml_b64: str = self.encode_file_as_base64_string(
+            f'{base_dir}{os.path.sep}conf{os.path.sep}default_deploy_buildspec.yml'
+        )
+
+        cdk_prepare_synth_build = codebuild.PipelineProject(
+            self,
+            "CDKPrepareSynthBuild",
+            role=cdk_synth_build_role,
+            build_spec=codebuild.BuildSpec.from_object(
+                {
+                    "version": 0.2,
+                    "env": {
+                        "shell": "bash",
+                        "variables": {
+                            f"{default_deploy_build_spec_env_name}": f'{default_deploy_build_spec_yml_b64}',
+                            f"{mandatory_cfn_nag_ignore_env_name}": f'{cfn_nag_mandatory_yml_b64}'
+                        },
+                    },
+                    "phases": {
+                        "install": {
+                            "runtime-versions": {"python": 3.11},
+                        },
+                        "build": {
+                            "commands": [
+                                f"python -c '{cfn_nag_ignore_python_fn}'",
+                                f"python -c '{build_spec_python_fn}'",
+                                'ls -lrt',
+                                'cat ./buildspec.yml'
+                            ]
+                        },
+                    },
+                    "artifacts": {
+                        "base-directory": ".",
+                        "files": "**/*"
+                    },
+                }
+            ),
+            environment=codebuild.BuildEnvironment(
+                build_image=build_image,
+                environment_variables=environment_variables,
             ),
         )
 
@@ -146,28 +237,9 @@ class DeployPipelineConstruct(Construct):
             "CDKSynthBuild",
             role=cdk_synth_build_role,
             build_spec=codebuild.BuildSpec.from_source_filename("buildspec.yml"),
-            # build_spec=codebuild.BuildSpec.from_object(
-            #     {
-            #         "version": "0.2",
-            #         "phases": {
-            #             "build": {
-            #                 "commands": [
-            #                     "npm install -g aws-cdk",
-            #                     "pip install -r requirements.txt",
-            #                     "cdk synth --no-lookups",
-            #                 ]
-            #             }
-            #         },
-            #         "artifacts": {"base-directory": "cdk.out", "files": "**/*"},
-            #     }
-            # ),
             environment=codebuild.BuildEnvironment(
-                build_image=codebuild.LinuxBuildImage.STANDARD_5_0,
-                environment_variables={
-                    "MODEL_PACKAGE_GROUP_NAME": codebuild.BuildEnvironmentVariable(value=model_package_group_name),
-                    "PROJECT_ID": codebuild.BuildEnvironmentVariable(value=project_id),
-                    "PROJECT_NAME": codebuild.BuildEnvironmentVariable(value=project_name),
-                },
+                build_image=build_image,
+                environment_variables=environment_variables,
             ),
         )
 
@@ -187,7 +259,7 @@ class DeployPipelineConstruct(Construct):
                     },
                     "phases": {
                         "install": {
-                            "runtime-versions": {"ruby": 3.1},
+                            "runtime-versions": {"ruby": 3.2, "python": 3.11},
                             "commands": [
                                 "export date=`date +%Y-%m-%dT%H:%M:%S.%NZ`",
                                 "echo Installing cfn_nag - `pwd`",
@@ -198,25 +270,30 @@ class DeployPipelineConstruct(Construct):
                         "build": {
                             "commands": [
                                 "echo Starting cfn scanning `date` in `pwd`",
-                                "echo 'RulesToSuppress:\n- id: W58\n  reason: W58 is an warning raised due to Lambda functions require permission to write CloudWatch Logs, although the lambda role contains the policy that support these permissions cgn_nag continues to through this problem (https://github.com/stelligent/cfn_nag/issues/422)' > cfn_nag_ignore.yml",  # this is temporary solution to an issue with W58 rule with cfn_nag
                                 'mkdir report || echo "dir report exists"',
-                                "SCAN_RESULT=$(cfn_nag_scan --fail-on-warnings --deny-list-path cfn_nag_ignore.yml --input-path  ${TemplateFolder} -o json > ./report/cfn_nag.out.json && echo OK || echo FAILED)",
+                                'ls -lrt',
+                                f"SCAN_RESULT=$(cfn_nag_scan --fail-on-warnings "
+                                f"--deny-list-path {merged_cfn_nag_file_name} "
+                                "--input-path  ${TemplateFolder} -o json > ./report/cfn_nag.out.json && echo OK || "
+                                "echo FAILED)",
+                                "cat ./report/cfn_nag.out.json",
                                 "echo Completed cfn scanning `date`",
                                 "echo $SCAN_RESULT",
                                 "echo $FAIL_BUILD",
-                                """if [[ "$FAIL_BUILD" = "true" && "$SCAN_RESULT" = "FAILED" ]]; then printf "\n\nFailiing pipeline as possible insecure configurations were detected\n\n" && exit 1; fi""",
+                                """if [[ "$FAIL_BUILD" = "true" && "$SCAN_RESULT" = "FAILED" ]]; 
+                                then printf "\n\nFailiing pipeline as possible insecure configurations 
+                                were detected\n\n" && exit 1; fi""",
                             ]
                         },
                     },
                     "artifacts": {"files": "./report/cfn_nag.out.json"},
                 }
             ),
-            environment=codebuild.BuildEnvironment(
-                build_image=codebuild.LinuxBuildImage.STANDARD_5_0,
-            ),
+            environment=codebuild.BuildEnvironment(build_image=build_image)
         )
 
         source_artifact = codepipeline.Artifact(artifact_name="GitSource")
+        cdk_prepare_synth_artifact = codepipeline.Artifact(artifact_name="CDKPrepareSynth")
         cdk_synth_artifact = codepipeline.Artifact(artifact_name="CDKSynth")
         cfn_nag_artifact = codepipeline.Artifact(artifact_name="CfnNagScanReport")
 
@@ -234,7 +311,7 @@ class DeployPipelineConstruct(Construct):
             codepipeline_actions.CodeCommitSourceAction(
                 action_name="Source",
                 output=source_artifact,
-                repository=deploy_app_repository,
+                repository=repository,
                 branch="main",
             )
         )
@@ -244,8 +321,19 @@ class DeployPipelineConstruct(Construct):
 
         build_stage.add_action(
             codepipeline_actions.CodeBuildAction(
-                action_name="Synth",
+                run_order=1,
+                action_name="Prepare_Synth",
                 input=source_artifact,
+                outputs=[cdk_prepare_synth_artifact],
+                project=cdk_prepare_synth_build,
+            )
+        )
+
+        build_stage.add_action(
+            codepipeline_actions.CodeBuildAction(
+                run_order=2,
+                action_name="Synth",
+                input=cdk_prepare_synth_artifact,
                 outputs=[cdk_synth_artifact],
                 project=cdk_synth_build,
             )
@@ -264,106 +352,64 @@ class DeployPipelineConstruct(Construct):
         )
 
         # add stages to deploy to the different environments
-        deploy_code_pipeline.add_stage(
-            stage_name="DeployDev",
-            actions=[
-                codepipeline_actions.CloudFormationCreateUpdateStackAction(
-                    action_name="Deploy_CFN_Dev",
-                    run_order=1,
-                    template_path=cdk_synth_artifact.at_path("dev.template.json"),
-                    stack_name=f"{project_name}-{construct_id}-dev",
-                    admin_permissions=False,
-                    replace_on_failure=True,
-                    role=iam.Role.from_role_arn(
-                        self,
-                        "DevActionRole",
-                        f"arn:{Aws.PARTITION}:iam::{Aws.ACCOUNT_ID}:role/cdk-hnb659fds-deploy-role-{Aws.ACCOUNT_ID}-{Aws.REGION}",
-                    ),
-                    deployment_role=iam.Role.from_role_arn(
-                        self,
-                        "DevDeploymentRole",
-                        f"arn:{Aws.PARTITION}:iam::{Aws.ACCOUNT_ID}:role/cdk-hnb659fds-cfn-exec-role-{Aws.ACCOUNT_ID}-{Aws.REGION}",
-                    ),
-                    cfn_capabilities=[
-                        CfnCapabilities.AUTO_EXPAND,
-                        CfnCapabilities.NAMED_IAM,
-                    ],
-                ),
-                codepipeline_actions.ManualApprovalAction(
-                    action_name="Approve_PreProd",
-                    run_order=2,
-                    additional_information="Approving deployment for preprod",
-                ),
-            ],
-        )
+        for stage, account, region in [
+            ('Dev', Aws.ACCOUNT_ID, cdk.Aws.REGION),
+            ('PreProd', preprod_account, deployment_region),
+            ('Prod', prod_account, deployment_region)
+        ]:
 
-        deploy_code_pipeline.add_stage(
-            stage_name="DeployPreProd",
-            actions=[
-                codepipeline_actions.CloudFormationCreateUpdateStackAction(
-                    action_name="Deploy_CFN_PreProd",
-                    run_order=1,
-                    template_path=cdk_synth_artifact.at_path("preprod.template.json"),
-                    stack_name=f"{project_name}-{construct_id}-preprod",
-                    admin_permissions=False,
-                    replace_on_failure=True,
-                    role=iam.Role.from_role_arn(
-                        self,
-                        "PreProdActionRole",
-                        f"arn:{Aws.PARTITION}:iam::{preprod_account}:role/cdk-hnb659fds-deploy-role-{preprod_account}-{deployment_region}",
-                        mutable=False,
-                    ),
-                    deployment_role=iam.Role.from_role_arn(
-                        self,
-                        "PreProdDeploymentRole",
-                        f"arn:{Aws.PARTITION}:iam::{preprod_account}:role/cdk-hnb659fds-cfn-exec-role-{preprod_account}-{deployment_region}",
-                        mutable=False,
-                    ),
-                    cfn_capabilities=[
-                        CfnCapabilities.AUTO_EXPAND,
-                        CfnCapabilities.NAMED_IAM,
-                    ],
-                ),
-                codepipeline_actions.ManualApprovalAction(
-                    action_name="Approve_Prod",
-                    run_order=2,
-                    additional_information="Approving deployment for prod",
-                ),
-            ],
-        )
+            actions: typing.Optional[typing.List[codepipeline.IAction]] = list()
 
-        deploy_code_pipeline.add_stage(
-            stage_name="DeployProd",
-            actions=[
+            actions.append(
                 codepipeline_actions.CloudFormationCreateUpdateStackAction(
-                    action_name="Deploy_CFN_Prod",
+                    action_name=f"Deploy_CFN_{stage}",
                     run_order=1,
-                    template_path=cdk_synth_artifact.at_path("prod.template.json"),
-                    stack_name=f"{project_name}-{construct_id}-prod",
+                    template_path=cdk_synth_artifact.at_path(f"{stage.lower()}.template.json"),
+                    stack_name=f"{project_name}-{construct_id}-{stage.lower()}",
                     admin_permissions=False,
                     replace_on_failure=True,
                     role=iam.Role.from_role_arn(
                         self,
-                        "ProdActionRole",
-                        f"arn:{Aws.PARTITION}:iam::{prod_account}:role/cdk-hnb659fds-deploy-role-{prod_account}-{deployment_region}",
+                        f"{stage}ActionRole",
+                        f"arn:{Aws.PARTITION}:iam::{account}:"
+                        f"role/cdk-{cdk.DefaultStackSynthesizer.DEFAULT_QUALIFIER}-"
+                        f"deploy-role-{account}-{region}",
                         mutable=False,
                     ),
                     deployment_role=iam.Role.from_role_arn(
                         self,
-                        "ProdDeploymentRole",
-                        f"arn:{Aws.PARTITION}:iam::{prod_account}:role/cdk-hnb659fds-cfn-exec-role-{prod_account}-{deployment_region}",
+                        f"{stage}DeploymentRole",
+                        f"arn:{Aws.PARTITION}:iam::{account}:"
+                        f"role/cdk-{cdk.DefaultStackSynthesizer.DEFAULT_QUALIFIER}-"
+                        f"cfn-exec-role-{account}-{region}",
                         mutable=False,
                     ),
                     cfn_capabilities=[
                         CfnCapabilities.AUTO_EXPAND,
                         CfnCapabilities.NAMED_IAM,
                     ],
-                ),
-            ],
-        )
+                )
+            )
+
+            if stage in ['Dev', 'PreProd']:
+                approved_stage: str = 'PreProd' if stage == 'Dev' else 'Prod'
+                actions.append(
+                    codepipeline_actions.ManualApprovalAction(
+                        action_name=f"Approve_{approved_stage}",
+                        run_order=2,
+                        additional_information=f"Approving deployment for {approved_stage}",
+                    )
+                )
+
+            # add stage to deploy
+            deploy_code_pipeline.add_stage(
+                stage_name=f"Deploy{stage}",
+                actions=actions,
+            )
 
         if create_model_event_rule:
-            # CloudWatch rule to trigger model pipeline when a status change event happens to the model package group
+            # CloudWatch rule to trigger model pipeline when a status change event
+            # happens to the model package group
             model_event_rule = events.Rule(
                 self,
                 "ModelEventRule",
@@ -378,7 +424,8 @@ class DeployPipelineConstruct(Construct):
                 targets=[targets.CodePipeline(deploy_code_pipeline)],
             )
         else:
-            # CloudWatch rule to trigger the deploy CodePipeline when the build CodePipeline has succeeded
+            # CloudWatch rule to trigger the deploy CodePipeline when the build
+            # CodePipeline has succeeded
             codepipeline_event_rule = events.Rule(
                 self,
                 "BuildCodePipelineEventRule",
@@ -387,8 +434,55 @@ class DeployPipelineConstruct(Construct):
                     detail_type=["CodePipeline Pipeline Execution State Change"],
                     detail={
                         "pipeline": [f"{project_name}-build"],
-                        "state": ["SUCCEEDED"]
+                        "state": ["SUCCEEDED"],
                     },
                 ),
                 targets=[targets.CodePipeline(deploy_code_pipeline)],
             )
+
+    def encode_file_as_base64_string(cls, file_path: str) -> str:
+        with open(file_path, 'r') as file:
+            return b64encode(bytes(file.read(), 'utf-8')).decode('utf-8')
+
+    def create_python_fn_cfn_nag_yaml_merge(self, mandatory_nag_env_name: str,
+                                            product_specific_cfn_nag_filepath: str, out_file_name: str) -> str:
+
+        cfn_nag_ignore_python_fn: str = f'yaml_file_path="{product_specific_cfn_nag_filepath}";' \
+                                        f'import os;' \
+                                        f'import yaml;' \
+                                        f'from base64 import b64decode;' \
+                                        f'm_yml_str=b64decode(os.getenv("{mandatory_nag_env_name}")).decode("utf-8");' \
+                                        f'm_yml = yaml.safe_load(m_yml_str); ' \
+                                        f'os.path.exists(yaml_file_path) and ' \
+                                        f'[m_yml["RulesToSuppress"].append(e) ' \
+                                        f'for e in yaml.safe_load(open(yaml_file_path, "r"))["RulesToSuppress"]];  ' \
+                                        f'yaml.dump(m_yml, open("{out_file_name}", "w"), ' \
+                                        f'default_flow_style=False)'
+        return cfn_nag_ignore_python_fn
+
+    def create_python_fn_deploy_build_spec_update(self, default_build_spec_env_name: str,
+                                                  product_specific_build_spec_filepath: str, command: str) -> str:
+
+        build_spec_python_fn: str = f'command="{command}";' \
+                                    f'bs_yml="{product_specific_build_spec_filepath}";' \
+                                    f'import os;' \
+                                    f'import yaml;' \
+                                    f'from base64 import b64decode;' \
+                                    f'm_yml_str=b64decode(os.getenv("{default_build_spec_env_name}")).decode("utf-8");' \
+                                    f'm_yml = yaml.safe_load(m_yml_str); ' \
+                                    f'os.path.exists(bs_yml) is False and ' \
+                                    f'yaml.dump(m_yml, open(bs_yml, "w"), default_flow_style=False, sort_keys=False); ' \
+                                    f'bs=yaml.safe_load(open(bs_yml, 'r')); ' \
+                                    r'print(bs); ' \
+                                    r'phases = bs.get("phases", None); ' \
+                                    r'phases is None and bs.update({"phases": {}}); ' \
+                                    r'phases = bs.get("phases", None); ' \
+                                    r'post_build=phases.get("post_build", None); ' \
+                                    r'post_build is None and phases.update({"post_build": {}}); ' \
+                                    r'post_build=phases.get("post_build", None);  ' \
+                                    r'commands=post_build.get("commands", None); ' \
+                                    r'commands is None and post_build.update({"commands":[]});  ' \
+                                    r'commands=post_build.get("commands", None); ' \
+                                    r'commands.append(command); ' \
+                                    r'yaml.dump(bs, open(bs_yml, "w"), default_flow_style=False, sort_keys=False);'
+        return build_spec_python_fn
