@@ -17,7 +17,7 @@ However if you observe repeated patterns that you want to make available accross
 Then you could either modify an existing [template project stack](mlops_sm_project_template/templates/) or create your own.
 
 If you want to create a new Service Catalogue Product / SageMaker Project template in the Service Catalogue Portfolio, you should:
-- Create a new `YOUR_CUSTOM_project_stack.py` in [templates](mlops_sm_project_template/templates/) (you can copy a pre-existing one such as [dynamic_accounts_project_stack](mlops_sm_project_template/templates/dynamic_accounts_project_stack.py))
+- Create a new `YOUR_CUSTOM_project_stack.py` in [templates](mlops_sm_project_template/templates/) (you can copy a pre-existing one such as [dynamic_accounts_project_stack](mlops_sm_project_template/templates/train_deploy_basic_product/dynamic_accounts_project_stack.py))
 - You can reuse existing or create new CICD pipeline constructs in as in [pipeline_constructs](mlops_sm_project_template/templates/pipeline_constructs)
 - You can provide your own `seed code` for either the build or deploy app or both. Your `YOUR_CUSTOM_project_stack.py` should reference to the new ones you created.
 
@@ -51,7 +51,7 @@ For example:
 Whenever a SageMaker Project Template is instantiated by a user, the CodeCommit repositories will be initially populated with the seed code provided as s3_assets.
 The SSM paths containing the s3 paths of the seed repositories are passed as arguments to the CICD pipeline constructs (eg [build_pipeline_construct](mlops_sm_project_template/templates/pipeline_constructs/build_pipeline_construct.py)) which are in charge or creating the CodeCommit repositories and respective Code Pipelines.
 
-For example in [dynamic_accounts_project_stack](mlops_sm_project_template/templates/dynamic_accounts_project_stack.py):
+For example in [dynamic_accounts_project_stack](mlops_sm_project_template/templates/train_deploy_basic_product/dynamic_accounts_project_stack.py):
 
 ```
         seed_bucket = CfnDynamicReference(CfnDynamicReferenceService.SSM, "/mlops/code/seed_bucket").to_string()
