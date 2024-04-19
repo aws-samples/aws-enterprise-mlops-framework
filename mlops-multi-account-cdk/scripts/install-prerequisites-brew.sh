@@ -13,8 +13,8 @@ brew install --cask docker
 # install aws cdk
 npm install -g aws-cdk
 
-# setup python environemnt
-conda create -n cdk-env python=3.8
+# setup python environment
+conda create -n cdk-env python=3.11
 conda activate cdk-env
 
 # install aws cli in the python environment
