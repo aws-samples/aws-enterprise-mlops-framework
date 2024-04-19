@@ -144,7 +144,7 @@ if you are using a mac or a linux machine that supports `make` commands, you wil
 
 This repository also contains some shell scripts that you can use to setup your machine and aws accounts:
 
-* If you have a mac machine with [Homebrew](https://brew.sh/) installed, you can use [scripts/install-prerequisites-brew.sh](scripts/install-prerequisites-brew.sh) to install the prerequisites and setup the python environment
+* If you have a mac machine with [Homebrew](https://brew.sh/) installed, you can use [scripts/install-prerequisites-brew.sh](../scripts/install-prerequisites-brew.sh) to install the prerequisites and setup the python environment
 
 ### Setup AWS Profiles
 
@@ -196,7 +196,7 @@ follow the steps below to achieve that:
 cd mlops-infra
 ```
 
-3. Install dependencies in a separate python environment using your favourite python packages manager. You can refer to [scripts/install-prerequisites-brew.sh](scripts/install-prerequisites-brew.sh) for commands to setup a python environment.
+3. Install dependencies in a separate python environment using your favourite python packages manager. You can refer to [scripts/install-prerequisites-brew.sh](../scripts/install-prerequisites-brew.sh) for commands to setup a python environment.
 
 ```
  pip install -r requirements.txt
@@ -206,7 +206,7 @@ cd mlops-infra
 
 5. Ensure your docker daemon is running
 
-6. (Option 1) Bootstrap your deployment target accounts (e.g. governance, dev, etc.) using our script in [scripts/cdk-account-setup.sh](scripts/cdk-account-setup.sh). Ensure that you have the account ids ready and the corresponding AWS profiles with credentials created in your `~/.aws/credentials` for each account (see above).
+6. (Option 1) Bootstrap your deployment target accounts (e.g. governance, dev, etc.) using our script in [scripts/cdk-account-setup.sh](../scripts/cdk-account-setup.sh). Ensure that you have the account ids ready and the corresponding AWS profiles with credentials created in your `~/.aws/credentials` for each account (see above).
 
 The script will request the 4 accounts, i.e. governance, dev, preprod and prod, and the corresponding AWS profiles as inputs. If you want to only deploy to 1 account you can use the same id for all account variables or pass the same values in the script.
 
