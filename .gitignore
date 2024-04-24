@@ -4,3 +4,4 @@ outputs
 ipynb_checkpoints
 sm-pr.code-workspace
 *.idea*
+*bootstrap_conf.tmp

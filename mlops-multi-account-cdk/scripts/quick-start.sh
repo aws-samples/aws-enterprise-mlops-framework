@@ -10,19 +10,19 @@ main() {
   cmd="$1"
 
   case $cmd in
-    prerequisites|dependencies|install)
-      echo "Start installing prerequisites like environments and it's dependencies, nodejs and it's dependencies"
+    prerequisites)
+      echo "Start installing prerequisites like environments and dependencies"
       "$SCRIPT_PATH"/install-prerequisites-brew.sh
       ;;
     config)
-      echo "Start preparing config as per user input"
-      "$SCRIPT_PATH"/mlops-config.sh
+      echo "Start updating config files with user inputs"
+      "$SCRIPT_PATH"/create-config-files.sh
       ;;
     bootstrap)
       echo "Start bootstrapping Aws accounts"
-      "$SCRIPT_PATH"/bootstrap.sh
+      "$SCRIPT_PATH"/cdk-bootstrap-accounts.sh
       ;;
-    *) echo "Not supported command : $cmd!!!, Supported commands : [prerequisites|dependencies|install, config, bootstrap]"
+    *) echo "Not supported command : $cmd!!!, Supported commands : [prerequisites, config, bootstrap]"
   esac
 }
 
