@@ -5,8 +5,14 @@
 SCRIPT=$(readlink -f "$0")
 SCRIPT_PATH=$(dirname "$SCRIPT")
 
-bootstrap_conf_file="$SCRIPT_PATH/../mlops-infra/mlops_infra/config/bootstrap.conf"
+bootstrap_conf_file="$SCRIPT_PATH/bootstrap_conf.tmp"
 
+read -r -p 'Have you already created AWS profiles for all accounts that you would like to bootstrap (they should match the names found in bootstrap_conf.tmp - See README) [y/n]:' env_choice
+
+if [[ "$env_choice" != "y" ]];then
+    echo "Please create AWS profiles first and rerun this command"
+    exit
+fi
 
 while read -r line; do
 

@@ -94,10 +94,10 @@ The CICD pipeline will deploy all stacks and resources to the appropriate accoun
 
 ### Prerequisites
 
-This is an AWS CDK project written in Python 3.8. Here's what you need to have on your workstation before you can deploy this project. It is preferred to use a linux OS to be able to run all cli commands and avoid path issues.
+This is an AWS CDK project written in Python 3.11. Here's what you need to have on your workstation before you can deploy this project. It is preferred to use a linux OS to be able to run all cli commands and avoid path issues.
 
 * [Node.js](https://nodejs.org/)
-* [Python3.8](https://www.python.org/downloads/release/python-380/) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
+* [Python3.11](https://www.python.org/downloads/release/python-3119/) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
 * [AWS CDK v2](https://aws.amazon.com/cdk/)
 * [AWS CLI](https://aws.amazon.com/cli/)
 * [Docker](https://docs.docker.com/desktop/)
@@ -206,13 +206,8 @@ cd mlops-infra
 
 5. Ensure your docker daemon is running
 
-6. (Option 1) Bootstrap your deployment target accounts (e.g. governance, dev, etc.) using our script in [scripts/cdk-account-setup.sh](../scripts/cdk-account-setup.sh). Ensure that you have the account ids ready and the corresponding AWS profiles with credentials created in your `~/.aws/credentials` for each account (see above).
-
-The script will request the 4 accounts, i.e. governance, dev, preprod and prod, and the corresponding AWS profiles as inputs. If you want to only deploy to 1 account you can use the same id for all account variables or pass the same values in the script.
-
-<add screenshot here of sccript execution>
-
-6. (Option 2) If you want to bootstrap the account manually (recommended if bootstrapping across several organization units), then run the following command for each account:
+6. If you want to bootstrap the account manually (recommended if bootstrapping across several organization units), then run the following command for each account:
+Ensure that you have the account ids ready and the corresponding AWS profiles with credentials created in your `~/.aws/credentials` for each account (see above).
 
 ```
 cdk bootstrap aws://<target account id>/<target region> --profile <target account profile>

@@ -38,8 +38,9 @@ The stack expects the following cloudformation parameters:
 
 The following resources are created:
 - **Product Launch Role** is created which has permissions to create all the resources defined in SageMaker Project Stack and access to resources used in that stack i.e. SSM Parameters and access to CDK Assets S3 bucket (deployed as part of CDKToolkit stack).
-- **A Service Catalog Product**, CloudFormation Product, for SageMaker Project Template as defined in [SageMaker Project Stack](#sagemaker-project-stack). The Product Launch Role is linked to this product.
-- **A Service Catalog Portfolio**, the product would be associated to this portfolio and has visibility to sagemaker studio and linked to the Execution Role provided in the cloudformation parameters.
+- **Service Catalog Products**, CloudFormation Products, (one for each example SageMaker Project Template) as defined in [SageMaker Project Stack](#sagemaker-project-stack). The Product Launch Role is linked to these products.
+- **A Service Catalog Portfolio**, the products would be associated to this portfolio and have visibility to sagemaker studio and linked to the Execution Role provided in the cloudformation parameters.
+Additionally for each Service Catalog product/SageMaker Project Template in [mlops_sm_project_template/templates](mlops_sm_project_template/templates/):
 - **2 assets**, a zip for the **seed code** for each of the **build app** and the **deploy app**, stored in CDK Assets bucket, this bucket is created as part of **CDKToolkit stack**. A SSM Parameter is created for each asset's s3 key and also for the s3 bucket name. These parameters are used in [SageMaker Project Stack](#sagemaker-project-stack).
 - **SSM Parameters** containig configuration about the target deployment accounts: **DEV**, **PREPROD** and **PROD** i.e. account id, region. These Parameters are used by the deploy app.
 
@@ -47,6 +48,7 @@ Once this stack is deployed in the account, the template will be usable by Amazo
 
 
 ### SageMaker Project Stack
+**NOTE**: The below description is valid for each Service Catalog product defined as `project.py` under in the [mlops_sm_project_template/templates](mlops_sm_project_template/templates/) folder.
 *This stack is stored as a service catalog product in the DEV Account and is visible in SageMaker Studio Domain*
 
 ![SageMaker project architecture](diagrams/mlops-sm-project-general-architecture.jpg)
@@ -83,7 +85,7 @@ These resources are deployed to the DEV account with cross account access enable
 
 This construct contains resources that create a CI/CD pipeline to orchestrate a model training using SageMaker Pipelines starting from doing preprocessing jobs over the data and end by registering the trained model in a model package group in SageMaker Model Registry. After the pipeline finishes running successfuly, the model will have `Pending Manual Approval` status in SageMaker Model Registry.
 
-In [seed_code/build_app](seed_code/build_app/), you will find the base code that would be setup when you create a new SageMaker Project. It is **python** based and is expected to run inside a CodeBuild project. There is a [buildspec.yml](seed_code/build_app/buildspec.yml) that describes the command that will be run. For more details about this base code, refer to [seed_code/build_app/README.md](seed_code/build_app/README.md).
+In [seed_code/build_app](mlops_sm_project_template/templates/train_deploy_basic_product/seed_code/build_app/), you will find the base code that would be setup when you create a new SageMaker Project. It is **python** based and is expected to run inside a CodeBuild project. There is a [buildspec.yml](seed_code/build_app/buildspec.yml) that describes the command that will be run. For more details about this base code, refer to [seed_code/build_app/README.md](seed_code/build_app/README.md).
 
 The following resources are created in this construct:
 - **CodeCommit Repository**, this repository is intialised with the code defined in `/mlops_sm_project_template/templates/<template-name>/seed_code/build_app/` which was the stored in an S3 bucket when the service catalog stack was deployed. 
@@ -141,15 +143,14 @@ The repository will create one parallel CICD pipeline for each entry. (please en
 
 The pipeline will deploy all stacks and resources to the appropriate accounts.
 
-
-## Getting Started
+## Getting Started: manual setup if you did not follow the instructions [here](/aws-enterprise-mlops-framework/README.md)
 
 ### Prerequisites
 
-This is an AWS CDK project written in Python 3.8. Here's what you need to have on your workstation before you can deploy this project. It is preferred to use a linux OS to be able to run all cli commands and avoid path issues.
+This is an AWS CDK project written in Python 3.11. Here's what you need to have on your workstation before you can deploy this project. It is preferred to use a linux OS to be able to run all cli commands and avoid path issues.
 
 * [Node.js](https://nodejs.org/)
-* [Python3.8](https://www.python.org/downloads/release/python-380/) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
+* [Python3.11](https://www.python.org/downloads/release/python-3119/) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
 * [AWS CDK v2](https://aws.amazon.com/cdk/)
 * [AWS CLI](https://aws.amazon.com/cli/)
 * [Docker](https://docs.docker.com/desktop/)
@@ -207,6 +208,7 @@ This is an AWS CDK project written in Python 3.8. Here's what you need to have o
 └── tests
     ├── ...
 ```
+
 
 if you are using a mac or a linux machine that supports `make` commands, you will be able to do the following:
 
@@ -279,12 +281,9 @@ cd mlops-sm-project-template
 5. Ensure your docker daemon is running
 
 **NOTE:** If you have already bootstrapped your accounts as part of the instructions of `mlops-infra` you can skip step 6.
-6. (Option 1) Bootstrap your deployment target accounts (e.g. governance, dev, etc.) using our script in [scripts/cdk-account-setup.sh](scripts/cdk-account-setup.sh). Ensure that you have the account ids ready and the corresponding AWS profiles with credentials created in your `~/.aws/credentials` for each account (see above).
 
-The script will request the 4 accounts, i.e. governance, dev, preprod and prod, and the corresponding AWS profiles as inputs. If you want to only deploy to 1 account you can use the same id for all account variables or pass the same values in the script.
-
-
-6. (Option 2) If you want to bootstrap the account manually (recommended if bootstrapping across several organization units), then run the following command for each account:
+6. If you want to bootstrap the account manually (recommended if bootstrapping across several organization units), then run the following command for each account:
+Ensure that you have the account ids ready and the corresponding AWS profiles with credentials created in your `~/.aws/credentials` for each account (see above).
 
 ```bash
 cdk bootstrap aws://<target account id>/<target region> --profile <target account profile>
