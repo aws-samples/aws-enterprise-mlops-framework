@@ -84,12 +84,13 @@ mlops-multi-account-cdk/scripts/quick-start.sh bootstrap
 
 ```bash
 cd mlops-multi-account-cdk/mlops-infra/
-pip install -requirements.txt
+pip install -r requirements.txt
 cdk deploy --all --profile mlops-governance
 ```
 
 ```bash
 cd mlops-multi-account-cdk/mlops-sm-project-template/
+pip install -r requirements.txt
 cdk deploy --all --profile mlops-governance
 ```
 
@@ -124,6 +125,10 @@ Viktor Malesevic <malesv@amazon.de>
 Fotinos Kyriakides <kyriakf@amazon.com>
 
 Ravi Bhushan Ratnakar <ravibrat@amazon.de>
+
+Marco Geiger <marcogei@amazon.com>
+
+Omar Shouman <omsho@amazon.de>
 
 Sokratis Kartakis <kartakis@amazon.com>
 
