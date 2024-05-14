@@ -209,29 +209,33 @@ class DeployEndpointStack(Stack):
 
         endpoint_config_production_variant.load_for_stack(self)
 
-        # create kms key to be used by the assets bucket
-        kms_key = kms.Key(
-            self,
-            "endpoint-kms-key",
-            description="key used for encryption of data in Amazpn SageMaker Endpoint",
-            enable_key_rotation=True,
-            policy=iam.PolicyDocument(
-                statements=[
-                    iam.PolicyStatement(
-                        actions=["kms:*"],
-                        effect=iam.Effect.ALLOW,
-                        resources=["*"],
-                        principals=[iam.AccountRootPrincipal()],
-                    )
-                ]
-            ),
-        )
+        kms_key_id = None
+        # if the instance type is not having nvme ssd, then create a kms key to encrypt the assets bucket
+        if 'd' not in endpoint_config_production_variant.instance_type:
+            # create kms key to be used by the assets bucket
+            kms_key = kms.Key(
+                self,
+                "endpoint-kms-key",
+                description="key used for encryption of data in Amazpn SageMaker Endpoint",
+                enable_key_rotation=True,
+                policy=iam.PolicyDocument(
+                    statements=[
+                        iam.PolicyStatement(
+                            actions=["kms:*"],
+                            effect=iam.Effect.ALLOW,
+                            resources=["*"],
+                            principals=[iam.AccountRootPrincipal()],
+                        )
+                    ]
+                ),
+            )
+            kms_key_id = kms_key.key_id
 
         endpoint_config = sagemaker.CfnEndpointConfig(
             self,
             "EndpointConfig",
             endpoint_config_name=endpoint_config_name,
-            kms_key_id=kms_key.key_id,
+            kms_key_id=kms_key_id,
             production_variants=[
                 endpoint_config_production_variant.get_endpoint_config_production_variant(
                     model.model_name
