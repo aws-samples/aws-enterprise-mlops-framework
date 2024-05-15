@@ -219,7 +219,7 @@ class DeployEndpointStack(Stack):
         # https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_sagemaker/CfnEndpointConfig.html#aws_cdk
         # .aws_sagemaker.CfnEndpointConfig
         if 'd' not in endpoint_config_production_variant.instance_type:
-            # create kms key to be used by the assets bucket
+
             kms_key = kms.Key(
                 self,
                 "endpoint-kms-key",
