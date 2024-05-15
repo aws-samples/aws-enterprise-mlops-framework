@@ -34,6 +34,8 @@ from config.constants import (
     PROJECT_ID,
     MODEL_BUCKET_ARN,
     SM_PIPELINE_DEFINITION_S3LOCATION,
+    DEV_ACCOUNT,
+    DEFAULT_DEPLOYMENT_REGION,
     # DATA_BUCKET,
     # DATA_KMS_KEY
 )
@@ -74,7 +76,6 @@ class DeploySMPipelineConstruct(Construct):
                 statements=[
                     iam.PolicyStatement(
                         actions=[
-                            "s3:Put*",
                             "s3:Get*",
                             "s3:List*",
                         ],
@@ -82,24 +83,42 @@ class DeploySMPipelineConstruct(Construct):
                         resources=[
                             MODEL_BUCKET_ARN,
                             f"{MODEL_BUCKET_ARN}/*",
-                            # DATA_BUCKET_ARN,
-                            # f"{DATA_BUCKET_ARN}/*",
                         ],
                     ),
                     iam.PolicyStatement(
                         actions=[
-                            "kms:Encrypt",
-                            "kms:ReEncrypt*",
-                            "kms:GenerateDataKey*",
                             "kms:Decrypt",
                             "kms:DescribeKey",
                         ],
                         effect=iam.Effect.ALLOW,
                         resources=[
-                            f"arn:aws:kms:{Aws.REGION}:{Aws.ACCOUNT_ID}:key/*",
-                            # DATA_KMS_KEY_ARN
+                            f"arn:aws:kms:{DEFAULT_DEPLOYMENT_REGION}:{DEV_ACCOUNT}:key/*", # TODO, read artefact kms key from project ssm instead
                         ],
                     ),
+                    # iam.PolicyStatement(
+                    #     actions=[
+                    #         "s3:Put*",
+                    #         "s3:Get*",
+                    #         "s3:List*",
+                    #     ],
+                    #     effect=iam.Effect.ALLOW,
+                    #     resources=[
+                    #         DATA_BUCKET_ARN,
+                    #         f"{DATA_BUCKET_ARN}/*",
+                    #     ],
+                    # ),
+                    # iam.PolicyStatement(
+                    #     actions=[
+                    #         "kms:Encrypt",
+                    #         "kms:ReEncrypt*",
+                    #         "kms:Decrypt",
+                    #         "kms:DescribeKey",
+                    #     ],
+                    #     effect=iam.Effect.ALLOW,
+                    #     resources=[
+                    #         DATA_KMS_KEY,
+                    #     ],
+                    # ),
                 ]
             ),
         )
@@ -114,13 +133,10 @@ class DeploySMPipelineConstruct(Construct):
                 iam.ManagedPolicy.from_aws_managed_policy_name(
                     "AmazonSageMakerFullAccess"
                 ),
-                # TODO: Remove once outputs S3 bucket created
+                # TODO: Remove below managed policy and uncomment commented part in smpipeline_execution_policy once outputs and data S3 bucket created
                 iam.ManagedPolicy.from_aws_managed_policy_name(
                     "AmazonS3FullAccess"
                 ),
-                iam.ManagedPolicy.from_aws_managed_policy_name(
-                    "AmazonOpenSearchServiceFullAccess"
-                ), 
                 iam.ManagedPolicy.from_aws_managed_policy_name(
                     "AmazonElasticContainerRegistryPublicFullAccess"
                 ), 
