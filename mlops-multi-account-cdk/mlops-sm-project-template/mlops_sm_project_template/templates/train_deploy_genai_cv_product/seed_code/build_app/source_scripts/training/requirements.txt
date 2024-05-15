@@ -1,0 +1,5 @@
+accelerate==0.15.0
+bitsandbytes==0.38.1
+datasets==2.8.0
+diffusers==0.11.1
+transformers==4.25.1

@@ -209,29 +209,41 @@ class DeployEndpointStack(Stack):
 
         endpoint_config_production_variant.load_for_stack(self)
 
-        # create kms key to be used by the assets bucket
-        kms_key = kms.Key(
-            self,
-            "endpoint-kms-key",
-            description="key used for encryption of data in Amazpn SageMaker Endpoint",
-            enable_key_rotation=True,
-            policy=iam.PolicyDocument(
-                statements=[
-                    iam.PolicyStatement(
-                        actions=["kms:*"],
-                        effect=iam.Effect.ALLOW,
-                        resources=["*"],
-                        principals=[iam.AccountRootPrincipal()],
-                    )
-                ]
-            ),
-        )
+        kms_key_id = None
+        # if the instance type is not having nvme ssd, then create a kms key to encrypt  data on instance storage
+        # volume if you provide kms key with instance type having nvme ssd then you will see below warning message
+        # warnings.warn(f"The provided kms key to use for encrypting the data on the endpoint's storage volume is
+        # ignored since the instance type {instance_type} has an instance store and the volume is encrypted using a
+        # hardware module on the instance.")
+        # For more details please see below link
+        # https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_sagemaker/CfnEndpointConfig.html#aws_cdk
+        # .aws_sagemaker.CfnEndpointConfig
+        if 'd' not in endpoint_config_production_variant.instance_type:
+
+            kms_key = kms.Key(
+                self,
+                "endpoint-kms-key",
+                description="key used for encryption of data of storage volume attached to Amazon SageMaker Endpoint",
+                alias=f"{model_name}-sagemaker-endpoint-volume-key",
+                enable_key_rotation=True,
+                policy=iam.PolicyDocument(
+                    statements=[
+                        iam.PolicyStatement(
+                            actions=["kms:*"],
+                            effect=iam.Effect.ALLOW,
+                            resources=["*"],
+                            principals=[iam.AccountRootPrincipal()],
+                        )
+                    ]
+                ),
+            )
+            kms_key_id = kms_key.key_id
 
         endpoint_config = sagemaker.CfnEndpointConfig(
             self,
             "EndpointConfig",
             endpoint_config_name=endpoint_config_name,
-            kms_key_id=kms_key.key_id,
+            kms_key_id=kms_key_id,
             production_variants=[
                 endpoint_config_production_variant.get_endpoint_config_production_variant(
                     model.model_name
