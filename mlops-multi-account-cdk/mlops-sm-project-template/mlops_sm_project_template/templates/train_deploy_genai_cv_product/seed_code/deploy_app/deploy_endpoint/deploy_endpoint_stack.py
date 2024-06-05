@@ -218,8 +218,8 @@ class DeployEndpointStack(Stack):
         # For more details please see below link
         # https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_sagemaker/CfnEndpointConfig.html#aws_cdk
         # .aws_sagemaker.CfnEndpointConfig
-        if 'd' not in endpoint_config_production_variant.instance_type:
-
+        if 'd' not in endpoint_config_production_variant.instance_type \
+            and 'g5' not in endpoint_config_production_variant.instance_type:
             kms_key = kms.Key(
                 self,
                 "endpoint-kms-key",

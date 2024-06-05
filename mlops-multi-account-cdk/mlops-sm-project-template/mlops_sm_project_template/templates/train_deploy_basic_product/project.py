@@ -48,7 +48,7 @@ class MLOpsStack(sc.ProductStack):
                         "production endpoint. The target DEV/PREPROD/PROD accounts are parameterized in this template."
                         )
 
-    TEMPLATE_NAME: str = "Build & Deploy MLOps parameterized template for real-time deployment"
+    TEMPLATE_NAME: str = "Build & Deploy MLOps template for real-time deployment (multi-account)"
 
     TEMPLATE_VERSION: str = 'v1.0'
 

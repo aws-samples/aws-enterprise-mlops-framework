@@ -48,7 +48,8 @@ class MLOpsStack(sc.ProductStack):
                         "creates a dev, preprod and production endpoint. The target DEV/PREPROD/PROD accounts "
                         "are parameterized in this template.")
 
-    TEMPLATE_NAME: str = "Build & Deploy MLOps template for real-time deployment using your own container"
+    TEMPLATE_NAME: str = ("Build & Deploy MLOps template for real-time deployment using your own container "
+                          "(multi-account)")
 
     TEMPLATE_VERSION: str = 'v1.0'
 
