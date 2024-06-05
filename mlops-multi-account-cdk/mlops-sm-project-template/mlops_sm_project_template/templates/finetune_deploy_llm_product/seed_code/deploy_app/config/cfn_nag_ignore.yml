@@ -1,0 +1,3 @@
+RulesToSuppress:
+  - id: "W1200"
+    reason: "W1200 is an warning raised due to using ec2 instance with nvme ssd"
