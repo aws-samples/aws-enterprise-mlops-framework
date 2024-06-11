@@ -18,6 +18,7 @@ from sagemaker.huggingface import (
     HuggingFace,
     HuggingFaceModel,
     HuggingFaceProcessor,
+    get_huggingface_llm_image_uri,
 )
 from sagemaker.inputs import TrainingInput
 from sagemaker.model_metrics import MetricsSource, ModelMetrics
@@ -34,7 +35,8 @@ from sagemaker.workflow.parameters import (
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.pipeline_context import PipelineSession
 from sagemaker.workflow.properties import PropertyFile
-from sagemaker.workflow.steps import CacheConfig, ProcessingStep, TrainingStep
+from sagemaker.workflow.steps import ProcessingStep, TrainingStep
+# from sagemaker.workflow.steps import CacheConfig # Enable to debug specific steps if previous steps were succesful
 
 
 logging.basicConfig(level=logging.INFO)
@@ -192,7 +194,7 @@ def get_pipeline(
     # If set to True, a small data sample will be selected to speed up pipeline execution.
     dry_run = ParameterString(name="DryRun", default_value="True")
 
-    cache_config = CacheConfig(enable_caching=True, expire_after="P5D")
+    # cache_config = CacheConfig(enable_caching=True, expire_after="P1D") # Enable to debug specific steps if previous steps were succesful
 
     ########################################## PREPROCESSING STEP #################################################
 
@@ -226,7 +228,7 @@ def get_pipeline(
     step_process = ProcessingStep(
         name="LoadPreprocessSplitDataset",
         step_args=step_args,
-        cache_config=cache_config,
+        # cache_config=cache_config, # Enable to debug specific steps if previous steps were succesful
     )
 
     ########################################## TRAINING STEP #######################################################
@@ -272,7 +274,7 @@ def get_pipeline(
     step_train = TrainingStep(
         name="FinetuneLLMSQLModel",
         step_args=step_args,
-        cache_config=cache_config,
+        # cache_config=cache_config, # Enable to debug specific steps if previous steps were succesful
     )
 
     ########################################## Evaluation Step ##########################################################
@@ -329,7 +331,7 @@ def get_pipeline(
         name="EvaluateSQLModel",
         step_args=step_args,
         property_files=[evaluation_report],
-        cache_config=cache_config,
+        # cache_config=cache_config, # Enable to debug specific steps if previous steps were succesful
     )
 
     # ########################################## MODEL CREATION & REGISTRATION STEP ######################################
@@ -345,11 +347,17 @@ def get_pipeline(
         )
     )
 
+    # Inference endpoint works with the tgi images which can be retrieved with the get_huggingface_llm_image_uri() method
+    llm_image = get_huggingface_llm_image_uri("huggingface", version="1.0.3")
+    
+    env={
+        "HF_MODEL_ID" : "/opt/ml/model",
+    }
+
     huggingface_model = HuggingFaceModel(
         name="LLMModel",
-        transformers_version=transformers_version,
-        pytorch_version=pytorch_version,
-        py_version=py_version,
+        image_uri=llm_image,
+        env=env,
         model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
         sagemaker_session=pipeline_session,
         role=role,
