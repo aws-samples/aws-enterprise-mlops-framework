@@ -52,7 +52,7 @@ class MLOpsStack(sc.ProductStack):
                         "The PREPROD/PROD accounts need to be cdk bootstraped in advance to have the right "
                         "CloudFormation execution cross account roles.")
 
-    TEMPLATE_NAME: str = "MLOps Batch Inference template to build and deploy SageMaker pipeline"
+    TEMPLATE_NAME: str = "MLOps Batch Inference template to build and deploy SageMaker pipelines (multi-account)"
 
     TEMPLATE_VERSION: str = 'v1.0'
 
