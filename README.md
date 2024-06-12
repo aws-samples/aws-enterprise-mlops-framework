@@ -122,8 +122,6 @@ The maintaining Team:
 
 Viktor Malesevic <malesv@amazon.de>
 
-Fotinos Kyriakides <kyriakf@amazon.com>
-
 Ravi Bhushan Ratnakar <ravibrat@amazon.de>
 
 Marco Geiger <marcogei@amazon.com>
@@ -132,8 +130,10 @@ Omar Shouman <omsho@amazon.de>
 
 Sokratis Kartakis <kartakis@amazon.com>
 
-Georgios Schinas <schinasg@amazon.co.uk>
-
 # Special thanks
 
-Fatema Alkhanaizi, who is no longer at AWS but has been the major initial contributor of the project.
+Fatema Alkhanaizi, who is no longer at AWS, was the major initial contributor of the project.
+Fotinos Kyriakides, no longer at AWS, was the lead co-owner and developer of this repository and helped to scale it in the last 2 years.
+Georgios Schinas, no longer at AWS, played a crucial role in advocating and guiding the design of this repository in its initial phase.
+Karsten Karres, no longer at AWS, developed the initial version of the Stable Diffusion (GenAI image generation) fine-tuning template.
+Seunghee Jeong, no longer at AWS, developed the initial version of the LLM fine-tuning template.
