@@ -47,17 +47,15 @@ class MLOpsStack(sc.ProductStack):
                         "train, evaluate and register a model. The deploy pipeline creates a dev,preprod and "
                         "production endpoint. The target DEV/PREPROD/PROD accounts are parameterized in this template."
                         )
-
-    TEMPLATE_NAME: str = ("Fine-tune & Deploy Stable Diffusion MLOps template (with HuggingFace) (multi-account)"
-                          )
+    TEMPLATE_NAME: str = "Fine-tune & Deploy LLMOps template (with HuggingFace) (multi-account)"
 
     TEMPLATE_VERSION: str = 'v1.0'
 
-    SUPPORT_EMAIL: str = 'genai_cv_project@example.com'
+    SUPPORT_EMAIL: str = 'llmops_project@example.com'
 
-    SUPPORT_URL: str = 'https://example.com/support/genai_cv_project'
+    SUPPORT_URL: str = 'https://example.com/support/llmops_project'
 
-    SUPPORT_DESCRIPTION: str = ('Example of support details for genai cv project'
+    SUPPORT_DESCRIPTION: str = ('Example of support details for llmops project'
                                 )
 
     @classmethod
