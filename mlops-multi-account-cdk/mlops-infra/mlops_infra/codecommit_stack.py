@@ -50,7 +50,7 @@ class CodeCommitStack(Stack):
         repo_asset = s3_assets.Asset(
             self,
             "DeployAsset",
-            path="",
+            path=".",
             bundling=BundlingOptions(
                 image=DockerImage.from_build("mlops_infra/cdk_helper_scripts/zip-image"),
                 command=[

@@ -18,14 +18,14 @@
 import aws_cdk as core
 import aws_cdk.assertions as assertions
 
-from mlops_sm_project_template.sm_project_stack import MlopsBatchV2Stack
+from mlops_sm_project_template.templates.train_deploy_basic_product.project import MLOpsStack
 
 
 # example tests. To run these tests, uncomment this file along with the example
 # resource in mlops_sm_project_template_v2/mlops_sm_project_template_v2_stack.py
 def test_sqs_queue_created():
     app = core.App()
-    stack = MlopsBatchV2Stack(app, "mlops-batch-v2")
+    stack = MLOpsStack(app, "mlops-stack")
     template = assertions.Template.from_stack(stack)
 
 

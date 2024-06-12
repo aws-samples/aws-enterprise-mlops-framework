@@ -43,11 +43,11 @@ class CoreStage(Stage):
     - ServiceCatalogStack: handles the creation of service catalog related resources and deploy product for sagemaker projects
     """
 
-    def __init__(self, scope: Construct, id: str, config_set: dict, **kwargs) -> None:
+    def __init__(self, scope: Construct, id: str, app_prefix: str, config_set: dict, **kwargs) -> None:
 
         super().__init__(scope, id, **kwargs)
 
-        service_catalog_stack = ServiceCatalogStack(self, "MLOpsServiceCatalog", config_set=config_set, **kwargs)
+        service_catalog_stack = ServiceCatalogStack(self, "MLOpsServiceCatalog", app_prefix, config_set, **kwargs)
 
 
 class PipelineStack(Stack):
@@ -102,6 +102,9 @@ class PipelineStack(Stack):
                     commands=[],
                     input=pipeline.synth,
                     primary_output_directory="./report",
+                    build_environment=codebuild.BuildEnvironment(
+                        build_image=codebuild.LinuxBuildImage.STANDARD_7_0,
+                    ),
                     partial_build_spec=codebuild.BuildSpec.from_object(
                         {
                             "version": 0.2,
@@ -114,7 +117,7 @@ class PipelineStack(Stack):
                             },
                             "phases": {
                                 "install": {
-                                    "runtime-versions": {"ruby": 3.1},
+                                    "runtime-versions": {"ruby": 3.2, "python": 3.11},
                                     "commands": [
                                         "export date=`date +%Y-%m-%dT%H:%M:%S.%NZ`",
                                         "echo Installing cfn_nag - `pwd`",
@@ -146,6 +149,7 @@ class PipelineStack(Stack):
             CoreStage(
                 self,
                 "DEV",
+                app_prefix=APP_PREFIX,
                 config_set=config_set,
                 env=Environment(account=config_set["DEV_ACCOUNT"], region=DEFAULT_DEPLOYMENT_REGION),
             )
