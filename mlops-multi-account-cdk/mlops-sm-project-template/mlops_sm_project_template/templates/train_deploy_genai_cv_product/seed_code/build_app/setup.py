@@ -30,7 +30,7 @@ with open("README.md", "r") as f:
 
 
 required_packages = [
-    "sagemaker==2.194.0",
+    "sagemaker==2.218.0",
     "transformers==4.25.1",
     "accelerate==0.15.0",
     "scipy==1.9.3",
