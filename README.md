@@ -1,12 +1,28 @@
-# MLOps Multi Account Setup with AWS CDK
+*Looking for an LLMOps template to fine-tune, evaluate, register and deploy LLMs with your own code using HuggingFace, SageMaker Pipelines and AWS CDK in Python? --> [finetune_deploy_llm_product](mlops-multi-account-cdk/mlops-sm-project-template/mlops_sm_project_template/templates/finetune_deploy_llm_product)*
+
+# MLOps Framework and Templates with AWS CDK in Python (Multi Account)
 
 As enterprise businesses embrace Machine Learning (ML) across their organisations, manual workflows for building, training, and deploying ML models tend to become bottlenecks to innovation. To overcome this, enterprises needs to shape a clear operating model defining how multiple personas, such as Data Scientists, Data Engineers, ML Engineers, IT, and Business stakeholders, should collaborate and interact, how to separate the concerns, responsibilities and skills, and how to leverage AWS services optimally. This combination of ML and Operations, so-called MLOps, is helping companies streamline their end-to-end ML lifecycle and boost productivity of data scientists while maintaining high model accuracy and enhancing security and compliance.
 
-In this repository, we have created a baseline infrastructure for a secure MLOps environment based on CDK. Our solution consists of two parts:
+In this repository, we have created a baseline infrastructure for a secure MLOps environment based on the AWS CDK in Python. Our solution consists of two parts:
 
  - [mlops-infra](mlops-multi-account-cdk/mlops-infra/): The necessary secure infrastructure for the multiple accounts of MLOps including VPCs and VPC endpoints, SSM, IAM user roles, etc.
-
  - [mlops-sm-project-template](mlops-multi-account-cdk/mlops-sm-project-template/): A Service Catalog portfolio that contains custom Amazon SageMaker Project templates that enable multi account model promotion.
+
+## MLOps templates available
+Currently, five example MLOps templates are available.
+All templates offer Model Building, Fine-tuning or Training, Evaluation, and Deployment across environments (dev, staging, prod)
+
+1. **MLOps Template for LLM Fine-tuning, and real-time inference**: MLOps pattern that shows how to create a SageMaker pipeline to fine-tune an LLM (CodeLlama) using HuggingFace and deploy the trained model as a SageMaker endpoint across environments.
+
+2. **MLOps Template for Image Generation Model Fine-tuning, and real-time inference**: MLOps pattern that shows how to create a SageMaker pipeline to fine-tune Stable Diffusion with Dreambooth using HuggingFace, and evaluate it (using FID + DINO), and deploy the trained model as a SageMaker endpoint across environments.
+
+3. **MLOps Template for ML Model Training and real-time inference**: MLOps pattern to train models (Tabular - XGBoost) using SageMaker pipelines and deploy the trained model as a SageMaker endpoint across environments.
+
+4. **MLOps Template for ML Model Training and batch inference**: MLOps pattern that shows how to train models (Tabular - XGBoost) using SageMaker pipelines and deploy SageMaker pipelines for batch inference across environments.
+
+5. **MLOps Template for ML Model Training and real-time inference with your own container (BYOC)**: Similar to Template 3. but enabling to bring your own container with a custom ECR repository.
+    
 
 ## How to use:
 
@@ -120,20 +136,26 @@ If you have any comments or questions, please contact:
 
 The maintaining Team:
 
-Viktor Malesevic <malesv@amazon.de>
-
-Ravi Bhushan Ratnakar <ravibrat@amazon.de>
-
-Marco Geiger <marcogei@amazon.com>
-
-Omar Shouman <omsho@amazon.de>
-
-Sokratis Kartakis <kartakis@amazon.com>
+- Viktor Malesevic <malesv@amazon.de>
+- Ravi Bhushan Ratnakar <ravibrat@amazon.de>
+- Marco Geiger <marcogei@amazon.com>
+- Omar Shouman <omsho@amazon.de>
+- Alessandro Cere <alecere@amazon.com>
+- Raul Diaz Garcia <garczrau@amazon.com>
+- Luca Granalli <granluc@amazon.com>
+- Anirudh Gangwal <angagwa@amazon.com>
+- Sokratis Kartakis <kartakis@amazon.com>
 
 # Special thanks
 
-Fatema Alkhanaizi, who is no longer at AWS, was the major initial contributor of the project.
-Fotinos Kyriakides, no longer at AWS, was the lead co-owner and developer of this repository and helped to scale it in the last 2 years.
-Georgios Schinas, no longer at AWS, played a crucial role in advocating and guiding the design of this repository in its initial phase.
-Karsten Karres, no longer at AWS, developed the initial version of the Stable Diffusion (GenAI image generation) fine-tuning template.
-Seunghee Jeong, no longer at AWS, developed the initial version of the LLM fine-tuning template.
+- Fatema Alkhanaizi, who is no longer at AWS, was the major initial contributor of the project.
+- Fotinos Kyriakides, no longer at AWS, was the lead co-owner and developer of this repository and helped to scale it in the last 2 years.
+- Georgios Schinas, no longer at AWS, played a crucial role in advocating and guiding the design of this repository in its initial phase.
+- Karsten Karres, no longer at AWS, developed the initial version of the Stable Diffusion (GenAI image generation) fine-tuning template.
+- Seunghee Jeong, no longer at AWS, developed the initial version of the LLM fine-tuning template.
+
+# Other AWS MLOps accelerators
+
+- Terraform and GitHub solution: https://github.com/aws-samples/mlops-multi-account-terraform
+- CloudFormation solution: https://github.com/aws-samples/amazon-sagemaker-secure-mlops
+- Infrastructure as Code agnostic solution leveraging Seed Farmer: https://github.com/awslabs/aiops-modules
