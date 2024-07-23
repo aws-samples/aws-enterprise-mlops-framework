@@ -1,5 +1,6 @@
-transformers==4.25.1 \
-    --hash=sha256:60f1be15e17e4a54373c787c713ec149dabcc63464131ac45611618fe7c2016e
+transformers==4.38.0 \
+    --hash=sha256:a6d7ae9afcfcc0773d8b9ef20940344bd1cae54fe49175ddea61c7c8d11fb52a \
+    --hash=sha256:aa98177980467cb0c73f34b19d70d0577ec021c7c00706fbaca46ac358fd083c
 accelerate==0.15.0 \
     --hash=sha256:014833307424cd0a22f89815802e00653756257c45dfdba2453e52d428931c65
 scipy==1.9.3 \
