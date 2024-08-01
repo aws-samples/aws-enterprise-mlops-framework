@@ -31,18 +31,24 @@ All templates offer Model Building, Fine-tuning or Training, Evaluation, and Dep
 First deploy [mlops-infra](mlops-multi-account-cdk/mlops-infra/):
 
 [mlops-infra](mlops-multi-account-cdk/mlops-infra/) will deploy a Secure data science exploration environment for your data scientists to explore and train their models inside a SageMaker studio environment.
-It also prepares your dev/preprod/prod accounts with the networking setup to: either run SageMaker studio in a VPC, or be able to create SageMaker Endpoints and other infrastructure inside VPCs.
-Please note that the networking created by mlops_infra is a kick start example and that the repository is also designed to be able to import existing VPCs created by your organization instead of creating its own VPCs.
+It also prepares your dev/preprod/prod accounts with the networking setup to: either run SageMaker studio in a VPC, or be able to create SageMaker Endpoints and other infrastructure inside VPCs. The architecture is represented below.
 The repository will also create example SageMaker users (Lead Data Scientist and Data Scientist) and associated roles and policies.
+Please note that the networking created by mlops_infra is a kick start example and that the repository is also designed to be able to import existing VPCs created by your organization instead of creating its own VPCs.
+The CDK application that creates this infrastructure also contains a CICD pipeline hosted in a governance account that deploys the infrastructure to your dev/preprod/prod accounts (more details in [mlops-infra](mlops-multi-account-cdk/mlops-infra/))
+
+![sagemaker studio and networking stack](mlops-multi-account-cdk/mlops-infra/diagrams/MLOPs%20Foundation%20Architecture-mlops%20secure%20networking.jpg)
 
 Once you have deployed [mlops-infra](mlops-multi-account-cdk/mlops-infra/), deploy [mlops-sm-project-template](mlops-multi-account-cdk/mlops-sm-project-template/):
 
 [mlops-sm-project-template](mlops-multi-account-cdk/mlops-sm-project-template/) will create a Service Catalog portfolio that contains SageMaker project templates as Service Catalog products.
 To do so, the [service_catalog](mlops-multi-account-cdk/mlops-sm-project-template/mlops_sm_project_template/service_catalog_stack.py) stack iterates over the [templates](mlops-multi-account-cdk/mlops-sm-project-template/mlops_sm_project_template/templates) folder which contains your different organization SageMaker project templates in the form of CDK stacks.
-The general idea of what those templates create is explained in [mlops-sm-project-template README](mlops-multi-account-cdk/mlops-sm-project-template/README.md) and in this [SageMaker Projects general architecture diagram](mlops-sm-project-template/diagrams/mlops-sm-project-general-architecture.jpg)
 These example SageMaker project templates can be customized for the need of your organization.
+The general architecture of each of those templates is represented in the diagram below.
+The CDK application that creates this infrastructure also contains a CICD pipeline hosted in a governance account that deploys the Service Catalog portfolio containing the templates to your dev accounts (more details in [mlops-sm-project-template README](mlops-multi-account-cdk/mlops-sm-project-template/README.md))
 
-**Note:** Both of those folders are cdk applications which also come with their respective CICD pipelines hosted in a central governance account, to deploy and maintain the infrastructure they define to target accounts. This is why you will see that both also contain a `pipeline_stack` and a `codecommit_stack`.
+![SageMaker Projects general architecture diagram](mlops-multi-account-cdk/mlops-sm-project-template/diagrams/mlops-sm-project-general-architecture.jpg)
+
+**Note:** As mentionned above, those folders are CDK applications which also come with their respective CICD pipelines hosted in a central governance account, to deploy and maintain the infrastructure they define to target accounts. This is why you will see that both also contain a `pipeline_stack` and a `codecommit_stack`.
 However if you are not interested in the concept of a centralized governance account and CICD mechanism, or if you already have an internal mechanism in place for those ([AWS Control Tower](https://docs.aws.amazon.com/controltower/index.html), [ADF](https://github.com/awslabs/aws-deployment-framework), etc...), you can simply use the `CoreStage` of each of those CDK applications. See the READMEs of each subfolder for more details.
 
 ## Quick setup - first deployment:
