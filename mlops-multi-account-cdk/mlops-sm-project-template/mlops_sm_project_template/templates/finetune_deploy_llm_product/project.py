@@ -162,7 +162,7 @@ class MLOpsStack(sc.ProductStack):
             ),
         )
 
-        deploy_app_path: str = f"{BASE_DIR}/seed_code/deploy_app"
+        deploy_app_path: str = "mlops_sm_project_template/templates/common_seed_code/endpoint_deploy_app"
         deploy_app_repository = codecommit.Repository(
             self,
             "DeployRepo",

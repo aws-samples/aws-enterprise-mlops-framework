@@ -1,3 +1,9 @@
+# NOTA:
+If you used this repository as part of the fine-tune LLM template or or the fine-tune Stable Diffusion template, please change the instance type
+in `config/dev/endpoint-config.yaml`, `config/staging/endpoint-config.yaml` and `config/prod/endpoint-config.yaml`
+to `ml.g5.12xlarge` or `ml.g4dn.2xlarge` respectively. (You might need to go to Service Quotas 
+to request access to those type of instances for the accounts where endpoints will be deployed)
+
 # Overview
 This repository is constructed as a cdk application. The `buildspec.yaml` in this folder will run:
 ```
