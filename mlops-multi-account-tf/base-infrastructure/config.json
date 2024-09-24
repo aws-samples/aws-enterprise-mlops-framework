@@ -1,0 +1,8 @@
+{
+  "business_unit_1": {
+    "region": "eu-west-1",
+    "dev_account_number": "111",
+    "preprod_account_number": "222",
+    "prod_account_number": "333"
+  }
+}
