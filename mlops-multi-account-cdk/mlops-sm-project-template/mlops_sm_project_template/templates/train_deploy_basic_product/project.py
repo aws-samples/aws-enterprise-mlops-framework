@@ -231,6 +231,7 @@ class MLOpsStack(sc.ProductStack):
             bucket_name=artifact_bucket_name,  # Bucket name has a limit of 63 characters
             encryption_key=kms_key,
             versioned=True,
+            enforce_ssl=True,
             # auto_delete_objects=True,
             # removal_policy=aws_cdk.RemovalPolicy.DESTROY,
         )
@@ -318,7 +319,7 @@ class MLOpsStack(sc.ProductStack):
             ]
         ).to_json()
 
-        model_package_group = sagemaker.CfnModelPackageGroup(
+        sagemaker.CfnModelPackageGroup(
             self,
             "ModelPackageGroup",
             model_package_group_name=model_package_group_name,
@@ -402,6 +403,7 @@ class MLOpsStack(sc.ProductStack):
             bucket_name=pipeline_bucket_name,  # Bucket name has a limit of 63 characters
             encryption_key=kms_key,
             versioned=True,
+            enforce_ssl=True,
             # auto_delete_objects=True,
             # removal_policy=aws_cdk.RemovalPolicy.DESTROY,
         )
