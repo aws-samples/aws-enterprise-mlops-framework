@@ -36,7 +36,7 @@ from mlops_sm_project_template.cdk_helper_scripts import seed_code_helper
 from constructs import Construct
 
 from mlops_sm_project_template.templates.constructs.build_pipeline import BuildPipelineConstruct
-from mlops_sm_project_template.templates.constructs.deploy_pipeline import DeployPipelineConstruct
+from mlops_sm_project_template.templates.constructs.iot_deploy_pipeline import DeployPipelineConstruct
 from mlops_sm_project_template.templates.constructs.ssm import SSMConstruct
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -45,19 +45,18 @@ BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 class MLOpsStack(sc.ProductStack):
     DESCRIPTION: str = ("This template includes a model building pipeline that includes a workflow to pre-process, "
                         "train, evaluate and register a model. The deploy pipeline creates a dev,preprod and "
-                        "production endpoint. The target DEV/PREPROD/PROD accounts are parameterized in this template."
+                        "production Greengrass deployment. The target DEV/PREPROD/PROD accounts are parameterized in this template."
                         )
 
-    TEMPLATE_NAME: str = "Build & Deploy MLOps template for real-time deployment (multi-account)"
+    TEMPLATE_NAME: str = "Build & Deploy MLOps template for IoT deployment (multi-account)"
 
     TEMPLATE_VERSION: str = 'v1.0'
 
-    SUPPORT_EMAIL: str = 'basic_project@example.com'
+    SUPPORT_EMAIL: str = 'iot_project@example.com'
 
-    SUPPORT_URL: str = 'https://example.com/support/basic_project'
+    SUPPORT_URL: str = 'https://example.com/support/iot_project'
 
-    SUPPORT_DESCRIPTION: str = ('Example of support details for basic project'
-                                )
+    SUPPORT_DESCRIPTION: str = ('Example of support details for IoT project')
 
     @classmethod
     def get_description(cls) -> str:
@@ -139,6 +138,38 @@ class MLOpsStack(sc.ProductStack):
             description="Deployment region for preprod and prod account.",
         ).value_as_string
 
+        preprod_iotthinggroup_arn = aws_cdk.CfnParameter(
+            self,
+            "PreprodIotThinggroupArn",
+            type="String",
+            min_length=8,
+            description="ARN of the Iot Thinggroup in preprod account.",
+        ).value_as_string
+        
+        preprod_iotrole_arn = aws_cdk.CfnParameter(
+            self,
+            "PreprodIotRoleArn",
+            type="String",
+            min_length=8,
+            description="ARN of the Iot Role in preprod account.",
+        ).value_as_string
+        
+        prod_iotthinggroup_arn = aws_cdk.CfnParameter(
+            self,
+            "ProdIotThinggroupArn",
+            type="String",
+            min_length=8,
+            description="ARN of the Iot Thinggroup in prod account.",
+        ).value_as_string
+        
+        prod_iotrole_arn = aws_cdk.CfnParameter(
+            self,
+            "ProdIotRoleArn",
+            type="String",
+            min_length=8,
+            description="ARN of the Iot Role in prod account.",
+        ).value_as_string
+        
         Tags.of(self).add("sagemaker:project-id", project_id)
         Tags.of(self).add("sagemaker:project-name", project_name)
         Tags.of(self).add("sagemaker:app-prefix", app_prefix)
@@ -163,7 +194,7 @@ class MLOpsStack(sc.ProductStack):
             ),
         )
 
-        deploy_app_path: str = "mlops_sm_project_template/templates/common_seed_code/endpoint_deploy_app"
+        deploy_app_path: str = f"{BASE_DIR}/seed_code/deploy_app"
         deploy_app_repository = codecommit.Repository(
             self,
             "DeployRepo",
@@ -186,7 +217,6 @@ class MLOpsStack(sc.ProductStack):
         kms_key = kms.Key(
             self,
             "ArtifactsBucketKMSKey",
-            alias=project_id,
             description="key used for encryption of data in Amazon S3",
             enable_key_rotation=True,
             policy=iam.PolicyDocument(
@@ -433,6 +463,10 @@ class MLOpsStack(sc.ProductStack):
             prod_account=prod_account,
             ecr_repo_arn=ml_models_ecr_repo_arn,
             deployment_region=deployment_region,
+            preprod_iotthinggroup_arn=preprod_iotthinggroup_arn,
+            preprod_iotrole_arn=preprod_iotrole_arn,
+            prod_iotthinggroup_arn=prod_iotthinggroup_arn,
+            prod_iotrole_arn=prod_iotrole_arn,
             create_model_event_rule=create_model_event_rule,
             caller_base_dir=BASE_DIR
         )

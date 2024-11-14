@@ -20,7 +20,6 @@ import os
 from importlib import import_module
 from pathlib import Path
 import datetime
-import time
 import aws_cdk
 import aws_cdk as cdk
 from aws_cdk import Stack, Tags
@@ -61,6 +60,7 @@ class ServiceCatalogStack(Stack):
             bucket_name=sc_product_artifact_bucket_name,
             encryption=s3.BucketEncryption.S3_MANAGED,
             versioned=True,
+            enforce_ssl=True,
             auto_delete_objects=True,
             removal_policy=aws_cdk.RemovalPolicy.DESTROY,
         )

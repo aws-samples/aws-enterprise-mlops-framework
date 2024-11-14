@@ -1,0 +1,70 @@
+---
+# custom greengrass components
+###
+custom-components:
+  model:
+    component-name: "$PROJECT_NAME_ID$-model"
+    root: "model"
+    build: 
+      build_system: "custom"
+      custom_build_command: 
+        - "bash"
+        - "compile/custom-build.sh"
+        - "$PROJECT_NAME_ID$-model"
+    model:
+      name: "model.tar.gz"
+      sagemaker-managed: "true"
+    Artifacts:
+    - URI: "s3://$BUCKET_NAME$/artifacts/greengrass/$COMPONENT_NAME$/$COMPONENT_VERSION$/model.tar.gz"
+    Lifecycle: 
+      Install:
+        RequiresPrivilege: "true"
+        Script: "tar -xvzf {artifacts:path}/model.tar.gz -C {artifacts:decompressedPath}/"
+
+  app:
+    component-name: "$PROJECT_NAME_ID$-greengrass-inference"
+    root: "app"
+    build: 
+      build_system: "zip"
+    ComponentConfiguration:
+      DefaultConfiguration:
+        accessControl:
+          aws.greengrass.ipc.mqttproxy:
+            $PROJECT_NAME_ID$-greengrass-inference:mqttproxy:1:
+              operations:
+                - "*"
+              resources:
+                - "*"
+    Artifacts:
+    - Permission:
+        Execute: OWNER
+      URI: "s3://$BUCKET_NAME$/artifacts/greengrass/$COMPONENT_NAME$/$COMPONENT_VERSION$/app.zip"
+      Unarchive: ZIP
+    Lifecycle: 
+      SetEnv:
+        MODEL_PATH: '{$PROJECT_NAME_ID$-model:artifacts:decompressedPath}/model.onnx'
+        MQTT_TOPIC: '/$PROJECT_NAME_ID$/inference'
+      Install: 
+        RequiresPrivilege: "true"
+        Script: pip install --no-index --find-links {$PROJECT_NAME_ID$-python-dependencies:artifacts:decompressedPath}/python-dependencies -r {artifacts:decompressedPath}/app/requirements.txt
+      Run: 
+        RequiresPrivilege: "true"
+        Script: |- 
+          cd {artifacts:decompressedPath}/app
+          python3 -u app.py --model-path $MODEL_PATH --mqtt-topic $MQTT_TOPIC
+        
+  python-dependencies:
+    component-name: "$PROJECT_NAME_ID$-python-dependencies"
+    root: "python-dependencies"
+    dependencies: "true"
+    build: 
+      build_system: "custom"
+      custom_build_command: 
+        - "bash"
+        - "package/custom-build.sh"
+        - "app"
+        - "$PROJECT_NAME_ID$-python-dependencies"
+    Artifacts:
+    - URI: "s3://$BUCKET_NAME$/artifacts/greengrass/$COMPONENT_NAME$/$COMPONENT_VERSION$/python-dependencies.zip"
+      Unarchive: "ZIP"
+    Lifecycle: {}
