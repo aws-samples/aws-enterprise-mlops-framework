@@ -1,0 +1,47 @@
+version: 0.2
+
+env:
+  shell: bash
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.10
+
+  pre_build:
+    commands:
+      - set -e # ensure the script fails if one line fails
+      - echo "START INSTALL GDK"
+      - pip install --upgrade --force-reinstall -t . "awscli>1.20.30"
+      - pip install -r requirements.txt
+      - python3 -m pip install -U git+https://github.com/aws-greengrass/aws-greengrass-gdk-cli.git@v1.2.0
+      - export PYTHON_VERSION=$(echo $(python --version) | sed 's/Python //')
+      - export PATH=$PATH:/root/.pyenv/versions/$PYTHON_VERSION/bin
+      
+      #RETRIEVE AND CREATE NEW VERSIONS FILE
+      - export PROJECT_NAME_ID="${PROJECT_NAME}-${PROJECT_ID}"
+      - python helpers/gdk-synth.py --import-config-file greengrass-config.yml --project-name-id $PROJECT_NAME_ID --artifact-bucket-name $ARTIFACT_BUCKET --region $REGION --update-version patch
+      
+      # Install Miniconda
+      - echo "Installing miniconda"
+      - curl -o miniconda.sh -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+      - sh miniconda.sh -b -p /opt/conda
+      - export PATH=/opt/conda/bin:$PATH
+  build:
+    commands:
+      - set -e # ensure the script fails if one line fails
+      - echo "BUILD"
+      - echo "Hello world"
+      - chmod +x "./helpers/gg-build.sh"
+      - ./helpers/gg-build.sh greengrass-config-updated.yml $ARTIFACT_BUCKET # Using updated yaml config after gdk-synth
+      
+  post_build:
+    commands:
+      - zip -r -X ./publish.zip ./publish
+  
+artifacts:
+  files:
+    - ./publish.zip
+    - greengrass-config-updated.yml
+    - deployment.json
+    

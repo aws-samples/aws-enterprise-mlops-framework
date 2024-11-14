@@ -1,0 +1,22 @@
+version: 0.2
+env:
+  shell: bash
+phases:
+  install:
+    runtime-versions:
+      python: 3.11
+    commands:
+    - pip install --upgrade --force-reinstall "awscli>1.20.30"
+  build:
+    commands:
+      - set -e # ensure the script fails if one line fails
+      - npm install -g aws-cdk
+      - npm install -g cdk-assets@2
+      - cd cdk_app
+      - pip install -r requirements.txt
+      - cdk synth # --no-lookups
+      - for f in cdk.out/*.assets.json; do cdk-assets publish --path $f; done
+
+artifacts:
+  base-directory: cdk_app/cdk.out
+  files: '**/*'

@@ -1,0 +1,11 @@
+RulesToSuppress:
+- id: "W12"
+  reason: "Needed by greengrass device for deployment of ML models"
+- id: "W13"
+  reason: "Needed by greengrass device for deployment of ML models"
+- id: "W28"
+  reason: "Needed by greengrass device for deployment of ML models"
+- id: "W38"
+  reason: "Needed by greengrass device for deployment of ML models"
+- id: "W39"
+  reason: "Needed by greengrass device for deployment of ML models"
