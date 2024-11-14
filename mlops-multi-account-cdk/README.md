@@ -24,6 +24,8 @@ All templates offer Model Building, Fine-tuning or Training, Evaluation, and Dep
 4. [**MLOps Template for ML Model Training and batch inference**](mlops-multi-account-cdk/mlops-sm-project-template/mlops_sm_project_template/templates/train_deploy_batch_inference_product/): MLOps pattern that shows how to train models (Tabular - XGBoost) using SageMaker pipelines and deploy SageMaker pipelines for batch inference across environments.
 
 5. [**MLOps Template for ML Model Training and real-time inference with your own container (BYOC)**](mlops-multi-account-cdk/mlops-sm-project-template/mlops_sm_project_template/templates/train_deploy_byoc_product/): Similar to Template 3. but enabling to bring your own container with a custom ECR repository.
+
+6. [**MLOps Template for ML Model Training and IoT deployment**](mlops-multi-account-cdk/mlops-sm-project-template/mlops_sm_project_template/templates/train_deploy_iot_product/): Similar to Template 3. but deploying an edge-optimized version to the model as GreenGrass components.
     
 
 ## How to use:
