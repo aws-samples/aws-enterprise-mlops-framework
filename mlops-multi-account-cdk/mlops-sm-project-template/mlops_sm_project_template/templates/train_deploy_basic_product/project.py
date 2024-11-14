@@ -186,6 +186,7 @@ class MLOpsStack(sc.ProductStack):
         kms_key = kms.Key(
             self,
             "ArtifactsBucketKMSKey",
+            alias=project_id,
             description="key used for encryption of data in Amazon S3",
             enable_key_rotation=True,
             policy=iam.PolicyDocument(
