@@ -1,0 +1,44 @@
+version: 0.2
+
+env:
+  shell: bash
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.10
+  pre_build:
+    commands:
+      - set -e # ensure the script fails if one line fails
+      - echo "START INSTALL GDK"
+      - pip install --upgrade --force-reinstall -t . "awscli>1.20.30"
+      - python3 -m pip install -U git+https://github.com/aws-greengrass/aws-greengrass-gdk-cli.git@v1.2.0
+      - export PYTHON_VERSION=$(echo $(python --version) | sed 's/Python //')
+      - export PATH=$PATH:/root/.pyenv/versions/$PYTHON_VERSION/bin
+
+      - |-
+        if [[ ! -z "$ROLE_TARGET" ]]; then
+            echo "ASSUME ROLE TARGET ACCOUNT"
+            OUT=$(aws sts assume-role --role-arn $ROLE_TARGET --role-session-name common-role);
+            export AWS_ACCESS_KEY_ID=$(echo $OUT | jq -r '.Credentials''.AccessKeyId')
+            export AWS_SECRET_ACCESS_KEY=$(echo $OUT | jq -r '.Credentials''.SecretAccessKey')
+            export AWS_SESSION_TOKEN=$(echo $OUT | jq -r '.Credentials''.SessionToken')
+        fi        
+
+
+  build:
+    commands:
+      - set -e # ensure the script fails if one line fails
+      - echo "PUBLISH"
+      - chmod +x "./helpers/gg-publish.sh"
+      - ./helpers/gg-publish.sh "$CODEBUILD_SRC_DIR_GDKArtefacts/greengrass-config-updated.yml" "$CODEBUILD_SRC_DIR_GDKArtefacts"
+      
+  post_build:
+    commands:
+      - set -e # ensure the script fails if one line fails
+      - echo "DEPLOY"
+      - echo $(pwd)
+      - echo $(ls)
+      - chmod +x "./helpers/gg-deploy.sh"
+      - ./helpers/gg-deploy.sh "$CODEBUILD_SRC_DIR_GDKArtefacts/deployment.json" "$CODEBUILD_SRC_DIR_GDKArtefacts" $TARGET_ARN
+      - echo "Publish completed."
